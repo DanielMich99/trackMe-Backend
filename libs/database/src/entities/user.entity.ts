@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Location } from './location.entity';
+import { Group } from './group.entity';
 
 @Entity('users')
 export class User {
@@ -16,8 +17,8 @@ export class User {
   password?: string;
 
   // --- הוסף את השורות האלה ---
-  @Column({ nullable: true }) 
-  groupId: string; 
+  @Column({ nullable: true })
+  groupId: string;
   // ---------------------------
 
   @CreateDateColumn()
@@ -25,4 +26,8 @@ export class User {
 
   @OneToMany(() => Location, (location) => location.user)
   locations: Location[];
+
+  @ManyToOne(() => Group, (group) => group.users)
+  @JoinColumn({ name: 'groupId' })
+  group: Group;
 }

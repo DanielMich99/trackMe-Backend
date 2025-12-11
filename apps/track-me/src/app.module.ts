@@ -6,9 +6,10 @@ import { DatabaseModule } from '@app/database'; // הייבוא החכם מהס�
 import { LocationModule } from './location/location.module';
 import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';
+import { GroupsModule } from './groups/groups.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule],
+  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule, GroupsModule],
   controllers: [AppController],
   providers: [AppService],
 })
