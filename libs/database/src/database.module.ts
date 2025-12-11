@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Location } from './entities/location.entity';
+import { Area } from './entities/area.entity';
 
 @Module({
   imports: [
@@ -12,10 +13,10 @@ import { Location } from './entities/location.entity';
       username: 'myuser',
       password: 'mypassword',
       database: 'track_me_db',
-      entities: [User, Location],
+      entities: [User, Location, Area],
       synchronize: true,
     }),
   ],
   exports: [TypeOrmModule],
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

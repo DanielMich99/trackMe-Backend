@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Location, User } from '@app/database';
+import { Location, User, Area } from '@app/database';
 import Redis from 'ioredis';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -18,6 +18,8 @@ export class LocationService {
     private locationRepository: Repository<Location>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Area)
+    private areaRepository: Repository<Area>,
     @Inject('REDIS_CLIENT') private readonly redis: Redis, // כאן אנחנו מקבלים את רדיס
   ) { }
 
@@ -71,9 +73,38 @@ export class LocationService {
     });
 
     // 4. שמירה מרוכזת (Bulk Insert) - שאילתה אחת גדולה!
-    await this.locationRepository.save(locationsToSave);
+    const savedLocations = await this.locationRepository.save(locationsToSave);
 
-    this.logger.log(`✅ Successfully saved ${locationsToSave.length} locations to Postgres.`);
+    this.logger.log(`✅ Successfully saved ${savedLocations.length} locations to Postgres.`);
+    await this.checkGeofences(savedLocations);
+  }
+
+  private async checkGeofences(locations: Location[]) {
+    for (const location of locations) {
+      // שאילתה גיאוגרפית מתוחכמת:
+      // "תביא לי את כל האזורים (Areas) שמכילים את הנקודה הזאת"
+      // ST_Contains(area.polygon, location.geom)
+
+      const matchingAreas = await this.areaRepository
+        .createQueryBuilder('area')
+        .where(`ST_Contains(area.polygon, ST_GeomFromGeoJSON(:point))`, {
+          point: JSON.stringify(location.geom)
+        })
+        .andWhere('area.groupId = :groupId', {
+          // כדי לבדוק רק אזורים של המשפחה של המשתמש, צריך לשלוף את המשתמש קודם.
+          // לצורך הדוגמה כרגע נדלג על זה או שנניח ששמרנו groupId בלוקיישן, 
+          // אבל כדי לא לסבך את ה-SQL נעשה בדיקה כללית כרגע:
+          groupId: 'my-family' // הארד-קוד רק בשביל הבדיקה, בהמשך נתקן
+        })
+        .getMany();
+
+      if (matchingAreas.length > 0) {
+        matchingAreas.forEach(area => {
+          this.logger.warn(`🚨 GEOFENCE ALERT: User ${location.userId} is inside ${area.name}!`);
+          // כאן בעתיד נשלח Push Notification להורים
+        });
+      }
+    }
   }
 
   // --- פונקציות עזר (ללא שינוי) ---

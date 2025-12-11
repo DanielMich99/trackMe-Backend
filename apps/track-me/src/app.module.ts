@@ -4,9 +4,10 @@ import { AppService } from './app.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from '@app/database'; // הייבוא החכם מהספרייה שיצרנו
 import { LocationModule } from './location/location.module';
+import { AreasModule } from './areas/areas.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule],
+  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule],
   controllers: [AppController],
   providers: [AppService],
 })
