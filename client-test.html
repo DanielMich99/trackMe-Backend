@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Socket.io Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h2>Family Tracker Real-Time Test</h2>
+    
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+        <h3>Simulate Phone (Sender)</h3>
+        <button onclick="sendLocation()">Send Random Location</button>
+    </div>
+
+    <div style="border: 1px solid #ccc; padding: 10px;">
+        <h3>Parent View (Receiver)</h3>
+        <ul id="updates"></ul>
+    </div>
+
+    <script>
+        // 1. קודם כל מגדירים את ה-ID (כדי שיהיה קיים לפני החיבור)
+        const MY_USER_ID = '4e361274-853c-4158-a60a-a670e99b2c82'; 
+
+        // 2. מתחברים לשרת ושולחים את ה-ID בתוך ה-query
+        const socket = io('http://localhost:3000', {
+            query: { userId: MY_USER_ID } // <--- הוספנו את זה!
+        });
+        
+        socket.on('connect', () => {
+            console.log('Connected to server!');
+            addLog('Connected to server via WebSocket!');
+        });
+
+        // האזנה לאירועים מהשרת (מה שההורה רואה)
+        socket.on('newLocationReceived', (data) => {
+            console.log('Update received:', data);
+            addLog(`📍 New Location: User ${data.userId} is at [${data.latitude}, ${data.longitude}]`);
+        });
+
+        // פונקציה שמדמה שליחת מיקום מהטלפון
+        function sendLocation() {
+            const payload = {
+                latitude: 32.08 + (Math.random() * 0.01),
+                longitude: 34.78 + (Math.random() * 0.01),
+                userId: MY_USER_ID
+            };
+            
+            // שליחת האירוע לשרת
+            socket.emit('updateLocation', payload);
+        }
+
+        function addLog(message) {
+            const li = document.createElement('li');
+            li.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            document.getElementById('updates').prepend(li);
+        }
+    </script>
+</body>
+</html>

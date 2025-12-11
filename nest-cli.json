@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/track-me/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/track-me/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/track-me",
+  "projects": {
+    "database": {
+      "type": "library",
+      "root": "libs/database",
+      "entryFile": "index",
+      "sourceRoot": "libs/database/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/database/tsconfig.lib.json"
+      }
+    },
+    "ingestion-service": {
+      "type": "application",
+      "root": "apps/ingestion-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/ingestion-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ingestion-service/tsconfig.app.json"
+      }
+    },
+    "track-me": {
+      "type": "application",
+      "root": "apps/track-me",
+      "entryFile": "main",
+      "sourceRoot": "apps/track-me/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/track-me/tsconfig.app.json"
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # --- The Database (Postgres + PostGIS) ---
+  db:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: ft-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: track_me_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # --- The Cache/PubSub (Redis) ---
+  redis:
+    image: redis:alpine
+    container_name: ft-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # --- Admin Tool for DB (Optional but recommended) ---
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ft-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
