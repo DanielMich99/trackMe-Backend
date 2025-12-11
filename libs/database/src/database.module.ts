@@ -8,8 +8,8 @@ import { Area } from './entities/area.entity';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5435, // <-- שים לב ששינינו את זה מ-5432 ל-5435
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5435'),
       username: 'myuser',
       password: 'mypassword',
       database: 'track_me_db',

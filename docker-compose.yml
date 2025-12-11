@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+
+  api:
+    build: . # בונה מה-Dockerfile בתיקייה הנוכחית
+    container_name: ft-api
+    ports:
+      - "3000:3000" # חושף את הפורט החוצה
+    environment:
+      # שים לב! כאן אנחנו מגדירים את הכתובות הפנימיות ברשת של דוקר
+      DB_HOST: db 
+      REDIS_HOST: redis
+      DB_PORT: 5432 # בתוך הרשת הפנימית הם מדברים בפורטים המקוריים
+      REDIS_PORT: 6379
+    depends_on:
+      - db
+      - redis
+    restart: always
+    
   # --- The Database (Postgres + PostGIS) ---
   db:
     image: postgis/postgis:15-3.3-alpine

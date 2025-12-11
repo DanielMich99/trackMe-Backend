@@ -19,8 +19,8 @@ import Redis from 'ioredis';
       provide: 'REDIS_CLIENT', // זה השם שבו נשתמש כדי לבקש את החיבור ב-Service
       useFactory: () => {
         return new Redis({
-          host: 'localhost', // אנחנו מתחברים לדוקר שרץ על המחשב שלנו
-          port: 6379,
+          host: process.env.REDIS_HOST || 'localhost', // כנ"ל
+          port: parseInt(process.env.REDIS_PORT || '6379'),
         });
       },
     },
