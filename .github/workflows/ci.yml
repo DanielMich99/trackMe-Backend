@@ -1,0 +1,47 @@
+name: CI/CD Pipeline
+
+# מתי זה ירוץ? בכל דחיפה ל-main או ב-Pull Request
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # המחשב של גיטהאב
+
+    steps:
+    # 1. הורדת הקוד שלך למחשב של גיטהאב
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2. התקנת Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20' # גרסה יציבה
+
+    # 3. התקנת התלויות (npm install)
+    - name: Install Dependencies
+      run: npm install
+
+    # 4. בדיקת בנייה (מוודא שאין שגיאות טייפסקריפט)
+    - name: Build Application
+      run: npm run build
+
+    # 5. (אופציונלי) כאן אפשר להריץ טסטים בעתיד
+    # - name: Run Tests
+    #   run: npm run test
+
+  # ג'וב נוסף: בדיקה שהדוקר נבנה כמו שצריך
+  docker-build:
+    needs: build-and-test # רץ רק אם השלב הקודם הצליח
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        run: docker build -t track-me-api .
