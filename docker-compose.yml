@@ -1,23 +1,22 @@
 version: '3.8'
 
 services:
+  # --- API (בהערה כרגע כדי שנריץ אותו בטרמינל לפיתוח) ---
+  # api:
+  #   build: .
+  #   container_name: ft-api
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DB_HOST: db 
+  #     REDIS_HOST: redis
+  #     DB_PORT: 5432
+  #     REDIS_PORT: 6379
+  #   depends_on:
+  #     - db
+  #     - redis 
+  #   restart: always 
 
-  api:
-    build: . # בונה מה-Dockerfile בתיקייה הנוכחית
-    container_name: ft-api
-    ports:
-      - "3000:3000" # חושף את הפורט החוצה
-    environment:
-      # שים לב! כאן אנחנו מגדירים את הכתובות הפנימיות ברשת של דוקר
-      DB_HOST: db 
-      REDIS_HOST: redis
-      DB_PORT: 5432 # בתוך הרשת הפנימית הם מדברים בפורטים המקוריים
-      REDIS_PORT: 6379
-    depends_on:
-      - db
-      - redis
-    restart: always
-    
   # --- The Database (Postgres + PostGIS) ---
   db:
     image: postgis/postgis:15-3.3-alpine
@@ -32,7 +31,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # --- The Cache/PubSub (Redis) ---
+  # --- The Cache (Redis) ---
   redis:
     image: redis:alpine
     container_name: ft-redis
@@ -40,7 +39,34 @@ services:
     ports:
       - "6379:6379"
 
-  # --- Admin Tool for DB (Optional but recommended) ---
+  # --- Zookeeper (המנהל של קפקא - חובה!) ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: ft-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # --- Kafka (מערכת ההודעות) ---
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: ft-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # הגדרות רשת שמאפשרות גישה גם מתוך הדוקר וגם מהמחשב שלך (localhost)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # --- Admin Tool for DB ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: ft-pgadmin

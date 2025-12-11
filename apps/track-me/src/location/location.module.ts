@@ -1,29 +1,32 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm'; // <-- הוספה חשובה
+import { ClientsModule, Transport } from '@nestjs/microservices'; // <-- הוספה
 import { LocationService } from './location.service';
 import { LocationController } from './location.controller';
-import { Location, User, Area } from '@app/database'; // <-- הוספה חשובה
 import { LocationGateway } from './location.gateway';
-import Redis from 'ioredis';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Location, User, Area } from '@app/database';
+// (מחק את הייבוא של Redis אם הוא שם, אנחנו מחליפים אותו בקפקא)
 
 @Module({
   imports: [
-    // השורה הזו אומרת לנסט: "המודול הזה הולך להשתמש בטבלאות האלה"
     TypeOrmModule.forFeature([Location, User, Area]),
+    // הגדרת הלקוח של קפקא
+    ClientsModule.register([
+      {
+        name: 'KAFKA_SERVICE', // השם שדרכו נפנה אליו
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            brokers: ['localhost:9092'], // הכתובת של קפקא בדוקר
+          },
+          consumer: {
+            groupId: 'track-me-producer', // מזהה ייחודי
+          },
+        },
+      },
+    ]),
   ],
   controllers: [LocationController],
-  providers: [
-    LocationService,
-    LocationGateway,
-    {
-      provide: 'REDIS_CLIENT', // זה השם שבו נשתמש כדי לבקש את החיבור ב-Service
-      useFactory: () => {
-        return new Redis({
-          host: process.env.REDIS_HOST || 'localhost', // כנ"ל
-          port: parseInt(process.env.REDIS_PORT || '6379'),
-        });
-      },
-    },
-  ],
+  providers: [LocationService, LocationGateway],
 })
 export class LocationModule { }
