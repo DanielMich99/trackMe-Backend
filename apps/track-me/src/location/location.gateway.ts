@@ -1,11 +1,12 @@
 import {
   WebSocketGateway,
+  WebSocketServer,
   SubscribeMessage,
   MessageBody,
-  WebSocketServer,
+  ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  ConnectedSocket,
+  // מחקנו מכאן את OnModuleInit
 } from '@nestjs/websockets';
 import { LocationService } from './location.service';
 import { CreateLocationDto } from './dto/create-location.dto';
@@ -13,64 +14,93 @@ import { Server, Socket } from 'socket.io';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '@app/database';
 import { Repository } from 'typeorm';
+// הוספנו את OnModuleInit לשורה הזו:
+import { Inject, Logger, OnModuleInit } from '@nestjs/common';
+import Redis from 'ioredis';
 
 @WebSocketGateway({
   cors: { origin: '*' },
 })
-export class LocationGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class LocationGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
+  // <-- 2. הוספנו את OnModuleInit לרשימה
   @WebSocketServer()
   server: Server;
 
-  constructor(
-    private readonly locationService: LocationService,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-  ) {}
+  private readonly logger = new Logger(LocationGateway.name);
 
-  // 1. פונקציה שרצה אוטומטית כשמישהו מתחבר
+  constructor(
+    @Inject('REDIS_SUB') private readonly redisSub: Redis,
+    // 3. החזרנו את התלויות שהיו חסרות כדי שהקוד הישן יעבוד
+    private readonly locationService: LocationService,
+    @InjectRepository(User) private readonly userRepository: Repository<User>,
+  ) { }
+
+  // --- החלק החדש: האזנה לרדיס ושידור ללקוחות ---
+  async onModuleInit() {
+    try {
+      await this.redisSub.subscribe('live_updates');
+      this.logger.log('📡 Gateway subscribed to Redis channel: live_updates');
+
+      this.redisSub.on('message', (channel, message) => {
+        if (channel === 'live_updates') {
+          const location = JSON.parse(message);
+          this.logger.log(
+            `📡 Gateway received update via Redis for User ${location.userId}`,
+          );
+
+          // שידור לכולם (או לקבוצה הספציפית אם המידע קיים)
+          // כרגע נשדר לכולם כברירת מחדל כדי לוודא שזה עובד
+          this.server.emit('newLocationReceived', location);
+        }
+      });
+    } catch (error) {
+      this.logger.error('Error subscribing to Redis', error);
+    }
+  }
+
+  // --- ניהול חיבורים וחדרים (נשאר מהקוד הקודם) ---
   async handleConnection(client: Socket) {
-    // הלקוח ישלח את ה-userId בפרמטרים של החיבור
     const userId = client.handshake.query.userId as string;
 
     if (!userId) {
-      console.log('Client connected without userId, disconnecting...');
-      client.disconnect();
+      this.logger.warn(`Client connected without userId: ${client.id}`);
+      // client.disconnect(); // ביטלתי זמנית את הניתוק כדי להקל על דיבוג
       return;
     }
 
-    // נביא את המשתמש מה-DB כדי לדעת מה ה-GroupId שלו
+    // חיפוש המשתמש כדי לדעת לאיזה Room לשייך אותו
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (user && user.groupId) {
-      // הקסם קורה כאן: מכניסים את הסוקט לחדר בשם ה-GroupId
       await client.join(user.groupId);
-      console.log(`User ${user.name} joined room: ${user.groupId}`);
+      this.logger.log(
+        `User ${user.email} (Socket: ${client.id}) joined room: ${user.groupId}`,
+      );
     } else {
-      console.log(`User ${userId} has no group, not joining any room.`);
+      this.logger.log(`User ${userId} connected (No Group)`);
     }
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  // --- (Legacy) קבלת מיקום ישירות מהסוקט ---
+  // הפונקציה הזו עדיין שימושית אם נרצה שהלקוח ישלח דרך סוקט במקום HTTP POST
   @SubscribeMessage('updateLocation')
   async handleUpdateLocation(
     @MessageBody() createLocationDto: CreateLocationDto,
-    @ConnectedSocket() client: Socket, // גישה ללקוח הספציפי ששלח
+    @ConnectedSocket() client: Socket,
   ) {
-    const savedLocation = await this.locationService.create(createLocationDto);
-    
-    // נביא שוב את המשתמש כדי לוודא לאיזה חדר לשדר
-    // (במערכת אמיתית היינו שומרים את זה ב-Session כדי לחסוך פניה ל-DB)
-    const user = await this.userRepository.findOne({ where: { id: createLocationDto.userId } });
+    // זה שולח לקפקא (דרך הסרביס המעודכן)
+    const result = await this.locationService.create(createLocationDto);
 
-    if (user && user.groupId) {
-      // שידור רק למי שבחדר!
-      this.server.to(user.groupId).emit('newLocationReceived', savedLocation);
-      console.log(`Sent location to room ${user.groupId}`);
-    }
+    // לוג לניטור
+    this.logger.log(
+      `Direct socket update received from ${createLocationDto.userId}`,
+    );
 
-    return savedLocation;
+    return result;
   }
 }

@@ -5,6 +5,7 @@ import { LocationController } from './location.controller';
 import { LocationGateway } from './location.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Location, User, Area } from '@app/database';
+import Redis from 'ioredis';
 // (מחק את הייבוא של Redis אם הוא שם, אנחנו מחליפים אותו בקפקא)
 
 @Module({
@@ -27,6 +28,16 @@ import { Location, User, Area } from '@app/database';
     ]),
   ],
   controllers: [LocationController],
-  providers: [LocationService, LocationGateway],
+  providers: [
+    LocationService,
+    LocationGateway,
+    // --- הוספנו את רדיס חזרה (בשביל ה-Gateway) ---
+    {
+      provide: 'REDIS_SUB', // שם מיוחד למנוי
+      useFactory: () => {
+        return new Redis({ host: 'localhost', port: 6379 });
+      },
+    },
+  ],
 })
 export class LocationModule { }

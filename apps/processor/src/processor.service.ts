@@ -58,6 +58,12 @@ export class ProcessorService {
     const savedLocations = await this.locationRepository.save(locationsToSave);
     this.logger.log(`✅ Processor saved ${savedLocations.length} locations to DB.`);
 
+    // --- התוספת החדשה: דיווח בזמן אמת ---
+    for (const location of savedLocations) {
+      // אנחנו מפרסמים לערוץ שנקרא 'live_updates'
+      await this.redis.publish('live_updates', JSON.stringify(location));
+    }
+
     // הפעלת בדיקת אזורים
     await this.checkGeofences(savedLocations);
   }
