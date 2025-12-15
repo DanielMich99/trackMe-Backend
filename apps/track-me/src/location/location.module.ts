@@ -39,5 +39,6 @@ import Redis from 'ioredis';
       },
     },
   ],
+  exports: [LocationGateway, LocationService],
 })
 export class LocationModule { }

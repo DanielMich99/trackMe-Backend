@@ -59,7 +59,7 @@ export class AuthService {
 
     // 3. יצירת הטוקן (JWT)
     // בתוך הטוקן נשמור את ה-ID והאימייל (Payload)
-    const payload = { sub: user.id, email: user.email, groupId: user.groupId };
+    const payload = { sub: user.id, email: user.email };
 
     return {
       access_token: this.jwtService.sign(payload), // החתימה הדיגיטלית

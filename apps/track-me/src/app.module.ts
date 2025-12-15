@@ -7,9 +7,10 @@ import { LocationModule } from './location/location.module';
 import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
+import { SosModule } from './sos/sos.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule, GroupsModule],
+  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule, GroupsModule, SosModule],
   controllers: [AppController],
   providers: [AppService],
 })

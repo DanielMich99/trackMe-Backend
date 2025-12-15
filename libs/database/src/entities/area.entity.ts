@@ -11,6 +11,23 @@ export class Area {
     @Column()
     groupId: string; // כדי שרק המשפחה שיצרה את האזור תראה אותו
 
+    @Column({
+        type: 'enum',
+        enum: ['SAFE', 'DANGER'],
+        default: 'DANGER'
+    })
+    type: 'SAFE' | 'DANGER';
+
+    @Column({ nullable: true })
+    targetUserId: string; // אם זה NULL -> תקף לכולם. אם יש ID -> רק עליו.
+
+    @Column({
+        type: 'enum',
+        enum: ['ENTER', 'LEAVE', 'BOTH'],
+        default: 'ENTER'
+    })
+    alertOn: 'ENTER' | 'LEAVE' | 'BOTH';
+
     // PostGIS Polygon
     @Column({
         type: 'geometry',

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Query } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
@@ -20,8 +20,33 @@ export class GroupsController {
     return this.groupsService.join(joinGroupDto, req.user.userId);
   }
 
-  @Get('my-group')
-  getMyGroup(@Request() req) {
-    return this.groupsService.getMyGroup(req.user.userId);
+  @Get('my-groups')
+  getMyGroups(@Request() req) {
+    return this.groupsService.getMyGroups(req.user.userId);
+  }
+
+  @Post('approve')
+  approve(@Body() body: { groupId: string; userId: string }, @Request() req) {
+    return this.groupsService.approveMember(req.user.userId, body.groupId, body.userId);
+  }
+
+  @Post('kick')
+  kick(@Body() body: { groupId: string; userId: string }, @Request() req) {
+    return this.groupsService.kickMember(req.user.userId, body.groupId, body.userId);
+  }
+
+  @Post('promote')
+  promote(@Body() body: { groupId: string; userId: string }, @Request() req) {
+    return this.groupsService.promoteMember(req.user.userId, body.groupId, body.userId);
+  }
+
+  @Post('demote')
+  demote(@Body() body: { groupId: string; userId: string }, @Request() req) {
+    return this.groupsService.demoteMember(req.user.userId, body.groupId, body.userId);
+  }
+
+  @Get('pending')
+  getPending(@Request() req, @Query('groupId') groupId: string) {
+    return this.groupsService.getPendingRequests(req.user.userId, groupId);
   }
 }

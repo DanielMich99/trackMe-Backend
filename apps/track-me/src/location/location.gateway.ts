@@ -42,16 +42,29 @@ export class LocationGateway
       await this.redisSub.subscribe('live_updates');
       this.logger.log('📡 Gateway subscribed to Redis channel: live_updates');
 
-      this.redisSub.on('message', (channel, message) => {
+      this.redisSub.on('message', async (channel, message) => {
         if (channel === 'live_updates') {
           const location = JSON.parse(message);
           this.logger.log(
             `📡 Gateway received update via Redis for User ${location.userId}`,
           );
 
-          // שידור לכולם (או לקבוצה הספציפית אם המידע קיים)
-          // כרגע נשדר לכולם כברירת מחדל כדי לוודא שזה עובד
-          this.server.emit('newLocationReceived', location);
+          // כדי לדעת לאילו חדרים לשדר, נביא את הקבוצות של המשתמש
+          // (אופטימיזציה: אפשר היה שלקפקא->רדיס יגיע כבר עם רשימת ה-GroupIDs)
+          const user = await this.userRepository.findOne({
+            where: { id: location.userId },
+            relations: ['memberships', 'memberships.group'],
+          });
+
+          if (user && user.memberships) {
+            user.memberships.forEach((member) => {
+              // רק אם החברות מאושרת, משדרים (אופציונלי, כרגע נשדר לכולם)
+              if (member.status === 'APPROVED' || true) {
+                this.server.to(member.group.id).emit('newLocationReceived', location);
+                this.logger.log(`>> Emitted location to Group Room: ${member.group.id}`);
+              }
+            });
+          }
         }
       });
     } catch (error) {
@@ -70,15 +83,21 @@ export class LocationGateway
     }
 
     // חיפוש המשתמש כדי לדעת לאיזה Room לשייך אותו
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['memberships', 'memberships.group'],
+    });
 
-    if (user && user.groupId) {
-      await client.join(user.groupId);
-      this.logger.log(
-        `User ${user.email} (Socket: ${client.id}) joined room: ${user.groupId}`,
-      );
+    if (user && user.memberships) {
+      user.memberships.forEach(async (member) => {
+        // מצטרפים לחדר של הקבוצה
+        await client.join(member.group.id);
+        this.logger.log(
+          `User ${user.email} joined room: ${member.group.name} (${member.group.id})`,
+        );
+      });
     } else {
-      this.logger.log(`User ${userId} connected (No Group)`);
+      this.logger.log(`User ${userId} connected (No Groups)`);
     }
   }
 

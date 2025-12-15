@@ -134,6 +134,39 @@ describe('Family Tracker E2E Flow', () => {
     });
   });
 
+  // --- 8. בדיקת SOS ---
+  it('SOS Flow - Child triggers SOS, Parent receives Alert', (done) => {
+    // אבא מתחבר
+    const parentSocket = io('http://localhost:3001', {
+      query: { userId: parentId },
+    });
+
+    // האבא מחכה לקבל הודעה
+    parentSocket.on('SOS_ALERT', (data) => {
+      try {
+        expect(data.userId).toBe(childId);
+        expect(data.message).toBe('User sent an SOS distress signal!');
+
+        parentSocket.close();
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    parentSocket.on('connect', () => {
+      // הילד שולח קריאת HTTP SOS
+      request(app.getHttpServer())
+        .post('/sos')
+        .set('Authorization', `Bearer ${childToken}`)
+        .expect(201)
+        .then(() => {
+          // Success
+        })
+        .catch((err) => done(err));
+    });
+  });
+
   afterAll(async () => {
     await app.close();
   });

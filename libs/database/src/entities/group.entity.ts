@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { User } from './user.entity';
+import { GroupMember } from './group-member.entity';
 
 @Entity('groups')
 export class Group {
@@ -12,7 +12,8 @@ export class Group {
     @Column({ unique: true })
     joinCode: string; // קוד סודי להצטרפות (למשל "X7Z-22A")
 
-    // קשר: לקבוצה אחת יש הרבה משתמשים
-    @OneToMany(() => User, (user) => user.group)
-    users: User[];
+    // קשר: לקבוצה יכולים להיות הרבה משתמשים, ומשתמש יכול להיות בהרבה קבוצות
+    // קשר: לקבוצה יש רשימת חברים
+    @OneToMany(() => GroupMember, (member) => member.group)
+    members: GroupMember[];
 }
