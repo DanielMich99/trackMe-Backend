@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// כתובת השרת שלנו (ה-Gateway)
+// Our backend server URL (the Gateway)
 export const API_URL = 'http://localhost:3000';
 
 export const api = axios.create({
@@ -10,7 +10,7 @@ export const api = axios.create({
     },
 });
 
-// Interceptor: מוסיף את הטוקן לכל בקשה באופן אוטומטי אם הוא קיים
+// Interceptor: Automatically adds the token to every request if it exists
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {

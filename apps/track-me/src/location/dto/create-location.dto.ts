@@ -12,7 +12,7 @@ export class CreateLocationDto {
   longitude: number;
 
   @IsString()
-  @IsUUID() // מוודא שזה מזהה משתמש תקין
+  @IsUUID() // Validates that this is a valid user ID
   @IsNotEmpty()
   userId: string;
 }

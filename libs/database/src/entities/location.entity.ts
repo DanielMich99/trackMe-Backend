@@ -13,7 +13,7 @@ export class Location {
   @Column('float')
   longitude: number;
 
-  // הגדרת עמודה גיאוגרפית ל-PostGIS
+  // Geographic column for PostGIS spatial queries
   @Index({ spatial: true })
   @Column({
     type: 'geometry',
@@ -21,14 +21,14 @@ export class Location {
     srid: 4326,
     nullable: true,
   })
-  geom: string; 
+  geom: string;
 
   @CreateDateColumn()
   timestamp: Date;
 
   @ManyToOne(() => User, (user) => user.locations, { onDelete: 'CASCADE' })
   user: User;
-  
+
   @Column()
   userId: string;
 }

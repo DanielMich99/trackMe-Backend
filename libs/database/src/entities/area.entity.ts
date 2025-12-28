@@ -6,10 +6,10 @@ export class Area {
     id: number;
 
     @Column()
-    name: string; // לדוגמה: "School", "Home", "Grandma's House"
+    name: string; // Example: "School", "Home", "Grandma's House"
 
     @Column()
-    groupId: string; // כדי שרק המשפחה שיצרה את האזור תראה אותו
+    groupId: string; // Only the group that created this area can see it
 
     @Column({
         type: 'enum',
@@ -19,7 +19,7 @@ export class Area {
     type: 'SAFE' | 'DANGER';
 
     @Column({ nullable: true })
-    targetUserId: string; // אם זה NULL -> תקף לכולם. אם יש ID -> רק עליו.
+    targetUserId?: string; // If NULL -> applies to everyone. If has ID -> only that user
 
     @Column({
         type: 'enum',

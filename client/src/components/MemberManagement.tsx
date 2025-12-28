@@ -1,8 +1,28 @@
+/**
+ * MemberManagement Component
+ * 
+ * Panel displaying group members and admin controls.
+ * 
+ * Features:
+ * - Shows list of approved group members
+ * - Displays pending join requests (admin only)
+ * - Admin actions: approve, kick, promote, demote members
+ * - Real-time role indicators (ADMIN badge)
+ * - Click on member to focus map on their location
+ * - Debug panel for troubleshooting admin permissions
+ * 
+ * Visibility:
+ * - All users see approved members
+ * - Only admins see pending requests and action buttons
+ */
 
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
+/**
+ * Represents a group member with their role and status
+ */
 interface Member {
     id: string;
     name: string;
@@ -11,19 +31,38 @@ interface Member {
     status: 'PENDING' | 'APPROVED';
 }
 
+/**
+ * Component props
+ * @property groupId - ID of the group to manage
+ * @property onMemberClick - Optional callback when a member is clicked (for map focus)
+ */
 interface Props {
     groupId: string;
+    onMemberClick?: (userId: string) => void;
+    onMemberApproved?: () => void;
 }
 
-export default function MemberManagement({ groupId }: Props) {
+export default function MemberManagement({ groupId, onMemberClick, onMemberApproved }: Props) {
     const { user } = useAuthStore();
     const [members, setMembers] = useState<Member[]>([]);
     const [pending, setPending] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // State for local admin check
+    // Track whether current user is an admin in this group
     const [isAdmin, setIsAdmin] = useState(false);
 
+    /**
+     * Fetches group members and pending requests
+     * 
+     * Flow:
+     * 1. Loads all user's groups from backend
+     * 2. Finds the current group by groupId
+     * 3. Sets members list from group data
+     * 4. Checks if current user is admin in this group
+     * 5. If admin, fetches pending join requests
+     * 
+     * Includes extensive console logging for debugging admin role issues
+     */
     const fetchMembers = async () => {
         if (!user || !groupId) {
             console.log('[MemberMgmt] Skipping fetch - missing user or groupId');
@@ -80,57 +119,90 @@ export default function MemberManagement({ groupId }: Props) {
         }
     };
 
+    // Reload members when group changes or user logs in
     useEffect(() => {
         fetchMembers();
     }, [groupId, user?.id]); // Depend on user.id specifically
 
-    const handleAction = async (action: 'approve' | 'kick' | 'promote' | 'demote', targetUserId: string) => {
+    /**
+     * Handles admin actions on members
+     * 
+     * Available actions:
+     * - approve: Change member status from PENDING to APPROVED
+     * - reject: Decline pending join request
+     * - kick: Remove member from group
+     * - promote: Change member role from MEMBER to ADMIN
+     * - demote: Change member role from ADMIN to MEMBER
+     * 
+     * @param action - The action to perform
+     * @param targetUserId - ID of the user to perform action on
+     */
+    const handleAction = async (action: 'approve' | 'reject' | 'kick' | 'promote' | 'demote', targetUserId: string) => {
         if (!confirm(`Are you sure you want to ${action} this user?`)) return;
         try {
             await api.post(`/groups/${action}`, { groupId, userId: targetUserId });
             fetchMembers(); // Refresh list
+            // Notify parent to refresh locations when a member is approved
+            if (action === 'approve' && onMemberApproved) {
+                onMemberApproved();
+            }
         } catch (err) {
             alert('Action failed');
         }
     };
 
-    // Moved to relative flow in parent stack
     return (
         <div className="bg-white p-4 rounded-lg shadow-xl w-[300px] max-h-[60vh] overflow-y-auto border border-gray-200">
             <h3 className="font-bold text-lg mb-2 border-b">Member List</h3>
 
+            {/* Loading indicator */}
             {loading && <p className="text-sm text-gray-500">Loading...</p>}
 
+            {/* Pending Requests Section - only visible to admins */}
             {isAdmin && pending.length > 0 && (
                 <div className="mb-4 bg-yellow-50 p-2 rounded">
                     <h4 className="font-bold text-xs text-yellow-800 uppercase mb-2">Pending Requests</h4>
                     {pending.map((req: any) => (
-                        <div key={req.id} className="flex justify-between items-center mb-2">
-                            <span className="text-sm">{req.user.email}</span>
-                            <button
-                                onClick={() => handleAction('approve', req.user.id)}
-                                className="bg-green-500 text-white text-xs px-2 py-1 rounded"
-                            >
-                                Approve (as Member)
-                            </button>
+                        <div key={req.id} className="flex justify-between items-center mb-2 gap-2">
+                            <span className="text-sm flex-1">{req.user.email}</span>
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => handleAction('approve', req.user.id)}
+                                    className="bg-green-500 text-white text-xs px-2 py-1 rounded hover:bg-green-600"
+                                >
+                                    Approve
+                                </button>
+                                <button
+                                    onClick={() => handleAction('reject', req.user.id)}
+                                    className="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600"
+                                >
+                                    Reject
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
             )}
 
+            {/* Member List - clickable for map focus */}
             <div className="flex flex-col gap-2">
                 {members.map(member => (
-                    <div key={member.id} className="flex justify-between items-start border-b pb-2 last:border-0">
+                    <div
+                        key={member.id}
+                        className={`flex justify-between items-start border-b pb-2 last:border-0 ${onMemberClick ? 'cursor-pointer hover:bg-blue-50 rounded p-1 -m-1 transition-colors' : ''}`}
+                        onClick={() => onMemberClick?.(member.id)}
+                    >
                         <div>
                             <p className="font-bold text-sm flex items-center gap-1">
                                 {member.name}
                                 {member.role === 'ADMIN' && <span className="text-[10px] bg-blue-100 text-blue-600 px-1 rounded">ADMIN</span>}
                             </p>
                             <p className="text-xs text-gray-500">{member.email}</p>
+                            {onMemberClick && <p className="text-[10px] text-blue-400">Click to locate on map</p>}
                         </div>
 
                         {isAdmin && member.id !== user?.id && (
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                 {member.role === 'MEMBER' && (
                                     <button onClick={() => handleAction('promote', member.id)} className="text-[10px] text-blue-500 hover:underline">Promote</button>
                                 )}

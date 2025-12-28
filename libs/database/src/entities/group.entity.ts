@@ -7,13 +7,13 @@ export class Group {
     id: string;
 
     @Column()
-    name: string; // שם הקבוצה (למשל "משפחת כהן")
+    name: string; // Group name (e.g., "Smith Family")
 
     @Column({ unique: true })
-    joinCode: string; // קוד סודי להצטרפות (למשל "X7Z-22A")
+    joinCode: string; // Secret code to join the group (e.g., "X7Z-22A")
 
-    // קשר: לקבוצה יכולים להיות הרבה משתמשים, ומשתמש יכול להיות בהרבה קבוצות
-    // קשר: לקבוצה יש רשימת חברים
+    // Relationship: A group can have many users, and a user can be in many groups
+    // Group members list
     @OneToMany(() => GroupMember, (member) => member.group)
     members: GroupMember[];
 }

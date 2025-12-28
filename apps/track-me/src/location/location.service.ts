@@ -9,9 +9,9 @@ import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class LocationService {
-  // Logger עוזר לנו לראות הודעות יפות בטרמינל
+  // Logger helps display formatted messages in the terminal
   private readonly logger = new Logger(LocationService.name);
-  // מפתח קבוע לשמירה ברדיס
+  // Constant key for storing in Redis
   private readonly REDIS_KEY = 'location_buffer';
 
   constructor(
@@ -24,9 +24,9 @@ export class LocationService {
     @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
   ) { }
 
-  // --- Fast Path: כתיבה מהירה לרדיס ---
+  // --- Fast Path: Quick write to Kafka ---
   async create(createLocationDto: CreateLocationDto) {
-    // במקום לשמור ל-DB או Redis, אנחנו שולחים "אירוע"
+    // Instead of saving to DB or Redis directly, we send an "event"
     this.kafkaClient.emit('location_update', {
       ...createLocationDto,
       timestamp: new Date().toISOString(),
@@ -34,11 +34,11 @@ export class LocationService {
 
     this.logger.log(`Sent location to Kafka: User ${createLocationDto.userId}`);
 
-    // מחזירים תשובה פיקטיבית ללקוח (הוא לא צריך לחכות לשמירה)
+    // Return immediate response to client (no need to wait for save)
     return { status: 'sent_to_queue' };
   }
 
-  // --- פונקציות עזר (ללא שינוי) ---
+  // --- Helper functions (no changes) ---
 
   findAll() { return []; }
 

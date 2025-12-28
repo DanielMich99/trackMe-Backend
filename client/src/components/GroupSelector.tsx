@@ -1,3 +1,14 @@
+/**
+ * GroupSelector Component
+ * 
+ * Dropdown menu for managing groups - allows users to:
+ * 1. View currently active group
+ * 2. Switch between their groups
+ * 3. Create new groups
+ * 4. Join existing groups using a code
+ * 
+ * Appears in the top-left corner of the map page.
+ */
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
@@ -8,24 +19,34 @@ export default function GroupSelector() {
     const [isOpen, setIsOpen] = useState(false);
     const [joinCode, setJoinCode] = useState('');
 
-    // טעינת הקבוצות בהתחלה
+    // Load user's groups on component mount
     useEffect(() => {
         api.get('/groups/my-groups').then((res) => {
             setGroups(res.data);
         }).catch(console.error);
     }, [setGroups]);
 
+    /**
+     * Handles joining a group using a join code
+     * Adds the joined group to the user's groups list (as pending)
+     */
     const handleJoin = async () => {
         try {
             const res = await api.post('/groups/join', { joinCode });
-            alert(`Joined ${res.data.group.name}!`);
-            setGroups([...groups, res.data.group]);
+            // Refresh groups list to show the new pending group
+            const groupsRes = await api.get('/groups/my-groups');
+            setGroups(groupsRes.data);
+            alert(res.data.message || `Request sent to ${res.data.group.name}!`);
             setJoinCode('');
         } catch (err: any) {
             alert('Failed to join: ' + err.response?.data?.message);
         }
     };
 
+    /**
+     * Handles creating a new group
+     * Prompts user for group name and sets it as active group
+     */
     const handleCreate = async () => {
         const name = prompt('Enter group name:');
         if (!name) return;
@@ -43,7 +64,7 @@ export default function GroupSelector() {
 
     return (
         <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
-            {/* כפתור ראשי להצגת הקבוצה הנוכחית */}
+            {/* Main button showing the currently active group */}
             <div
                 className="bg-white p-3 rounded-lg shadow-lg cursor-pointer flex items-center gap-2 min-w-[200px]"
                 onClick={() => setIsOpen(!isOpen)}
@@ -60,20 +81,25 @@ export default function GroupSelector() {
                 <span>{isOpen ? '▲' : '▼'}</span>
             </div>
 
-            {/* תפריט נפתח */}
+            {/* Dropdown menu - shown when isOpen is true */}
             {isOpen && (
                 <div className="bg-white rounded-lg shadow-xl p-2 w-[250px] flex flex-col gap-2">
                     <p className="text-xs text-gray-400 uppercase font-bold px-2">Switch Group</p>
-                    {groups.map(g => (
+                    {groups.map((g: any) => (
                         <div
                             key={g.id}
-                            className={`p-2 rounded cursor-pointer hover:bg-gray-100 ${activeGroupId === g.id ? 'bg-blue-50 text-blue-600' : ''}`}
+                            className={`p-2 rounded cursor-pointer hover:bg-gray-100 flex items-center justify-between ${activeGroupId === g.id ? 'bg-blue-50 text-blue-600' : ''}`}
                             onClick={() => {
                                 setActiveGroup(g.id);
                                 setIsOpen(false);
                             }}
                         >
-                            {g.name}
+                            <span>{g.name}</span>
+                            {g.myStatus === 'PENDING' && (
+                                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-bold">
+                                    Pending
+                                </span>
+                            )}
                         </div>
                     ))}
 

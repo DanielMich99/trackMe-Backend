@@ -19,6 +19,7 @@ import Redis from 'ioredis';
   providers: [
     ProcessorService,
     // 4. הגדרת חיבור ל-Redis (בדיוק כמו שהיה ב-API)
+    // זה יוצר לי סינגלטון של רדיס שאותו אני מזריק לסרביס
     {
       provide: 'REDIS_CLIENT',
       useFactory: () => {

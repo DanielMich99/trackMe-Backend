@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm'; // <-- הוספה
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AreasService } from './areas.service';
 import { AreasController } from './areas.controller';
-import { Area } from '@app/database'; // <-- הוספה
+import { Area, GroupMember } from '@app/database';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Area])], // <-- הוספה
+  imports: [TypeOrmModule.forFeature([Area, GroupMember])],
   controllers: [AreasController],
   providers: [AreasService],
 })

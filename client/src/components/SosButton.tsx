@@ -1,3 +1,14 @@
+/**
+ * SosButton Component
+ * 
+ * Emergency SOS button that sends alerts to all group members.
+ * 
+ * Features:
+ * - Confirmation dialog before sending
+ * - Visual feedback (pulsing animation)
+ * - Sends alert via WebSocket to all connected users
+ * - Centered at bottom of screen for easy access
+ */
 
 import { useState } from 'react';
 import { api } from '../lib/api';
@@ -5,6 +16,11 @@ import { api } from '../lib/api';
 export default function SosButton() {
     const [sending, setSending] = useState(false);
 
+    /**
+     * Handles sending SOS alert
+     * Shows confirmation, sends alert to backend,
+     * and provides visual feedback for 3 seconds
+     */
     const handleSos = async () => {
         if (!confirm('Are you sure you want to send an SOS alert to your family?')) return;
 
@@ -15,7 +31,7 @@ export default function SosButton() {
             alert('Failed to send SOS');
         }
 
-        // משאירים את הכפתור "לחוץ" קצת זמן לחיווי
+        // Keep button in "pressed" state briefly for visual feedback
         setTimeout(() => setSending(false), 3000);
     };
 
@@ -35,7 +51,7 @@ export default function SosButton() {
                 </div>
             </button>
 
-            {/* אפקט גלים כשהו שולח */}
+            {/* Ripple effect animation while sending */}
             {sending && (
                 <>
                     <div className="absolute inset-0 rounded-full bg-red-500 opacity-50 animate-ping"></div>

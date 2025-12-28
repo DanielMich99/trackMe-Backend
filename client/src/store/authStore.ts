@@ -17,7 +17,7 @@ interface AuthState {
     token: string | null;
     user: User | null;
     groups: Group[];
-    activeGroupId: string | null; // הקבוצה שכרגע מוצגת במפה
+    activeGroupId: string | null; // The group currently displayed on the map
     setAuth: (token: string, user: User) => void;
     setGroups: (groups: Group[]) => void;
     setActiveGroup: (groupId: string) => void;
@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setGroups: (groups) => {
         set((state) => ({
             groups,
-            // אם אין קבוצה פעילה ויש קבוצות, נבחר את הראשונה אוטומטית
+            // If no active group and groups exist, automatically select the first one
             activeGroupId: state.activeGroupId || (groups.length > 0 ? groups[0].id : null)
         }));
     },

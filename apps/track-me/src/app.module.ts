@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ScheduleModule } from '@nestjs/schedule';
-import { DatabaseModule } from '@app/database'; // הייבוא החכם מהספרייה שיצרנו
+import { DatabaseModule } from '@app/database';
 import { LocationModule } from './location/location.module';
 import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';

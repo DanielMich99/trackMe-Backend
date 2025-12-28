@@ -25,9 +25,9 @@ export class SosService {
 
         this.logger.warn(`🚨 SOS Alert triggered by ${user.name} (${user.email})`);
 
-        // שליחת הודעה לכל הקבוצות של המשתמש
+        // Send message to all of the user's groups
         user.memberships.forEach((member) => {
-            // משתמשים בפונקציה של ה-Server של ה-Socket ישירות
+            // Use the Socket.IO server directly to emit to group rooms
             this.locationGateway.server.to(member.group.id).emit('SOS_ALERT', {
                 userId: user.id,
                 userName: user.name,

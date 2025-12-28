@@ -15,7 +15,7 @@ export enum MemberStatus {
 }
 
 @Entity('group_members')
-@Unique(['user', 'group']) // מניעת כפילויות (משתמש לא יכול להיות באותה קבוצה פעמיים)
+@Unique(['user', 'group']) // Prevent duplicates (user cannot be in the same group twice)
 export class GroupMember {
     @PrimaryGeneratedColumn('uuid')
     id: string;

@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MapPage from './pages/MapPage';
+import AreasPage from './pages/AreasPage';
 import { useAuthStore } from './store/authStore';
 
-// רכיב שמגן על נתיבים שדורשים התחברות
+// Component that protects routes requiring authentication
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const token = useAuthStore((state) => state.token);
   if (!token) return <Navigate to="/login" />;
@@ -18,7 +19,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* דף המפה מוגן - רק מי שמחובר יכול להיכנס */}
+        {/* Protected map page */}
         <Route
           path="/map"
           element={
@@ -28,7 +29,17 @@ function App() {
           }
         />
 
-        {/* ברירת מחדל: הפנייה למפה (שתזרוק ללוגין אם לא מחוברים) */}
+        {/* Protected areas management page */}
+        <Route
+          path="/areas"
+          element={
+            <ProtectedRoute>
+              <AreasPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default: redirect to map */}
         <Route path="*" element={<Navigate to="/map" />} />
       </Routes>
     </BrowserRouter>

@@ -1,8 +1,7 @@
-
 import { Module } from '@nestjs/common';
 import { SosService } from './sos.service';
 import { SosController } from './sos.controller';
-import { LocationGateway } from '../location/location.gateway'; // נשתמש ב-Gateway הקיים כדי לשדר
+import { LocationGateway } from '../location/location.gateway'; // Use existing Gateway for broadcasting
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User, Group } from '@app/database';
 

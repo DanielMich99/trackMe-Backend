@@ -1,27 +1,27 @@
 import { Module } from '@nestjs/common';
-import { ClientsModule, Transport } from '@nestjs/microservices'; // <-- הוספה
+import { ClientsModule, Transport } from '@nestjs/microservices'; // Added for Kafka
 import { LocationService } from './location.service';
 import { LocationController } from './location.controller';
 import { LocationGateway } from './location.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Location, User, Area } from '@app/database';
 import Redis from 'ioredis';
-// (מחק את הייבוא של Redis אם הוא שם, אנחנו מחליפים אותו בקפקא)
+// (Remove Redis import if present, we're replacing it with Kafka)
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Location, User, Area]),
-    // הגדרת הלקוח של קפקא
+    // Kafka client configuration
     ClientsModule.register([
       {
-        name: 'KAFKA_SERVICE', // השם שדרכו נפנה אליו
+        name: 'KAFKA_SERVICE', // Service name for dependency injection
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['localhost:9092'], // הכתובת של קפקא בדוקר
+            brokers: ['localhost:9092'], // Kafka broker address in Docker
           },
           consumer: {
-            groupId: 'track-me-producer', // מזהה ייחודי
+            groupId: 'track-me-producer', // Unique consumer group ID
           },
         },
       },
@@ -31,9 +31,9 @@ import Redis from 'ioredis';
   providers: [
     LocationService,
     LocationGateway,
-    // --- הוספנו את רדיס חזרה (בשביל ה-Gateway) ---
+    // --- Added Redis back (for the Gateway) ---
     {
-      provide: 'REDIS_SUB', // שם מיוחד למנוי
+      provide: 'REDIS_SUB', // Special name for subscriber
       useFactory: () => {
         return new Redis({ host: 'localhost', port: 6379 });
       },
