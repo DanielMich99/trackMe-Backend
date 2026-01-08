@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Area, GroupMember, MemberStatus } from '@app/database';
@@ -41,6 +41,9 @@ export class AreasService {
         coordinates: [coords],
       } as any,
     });
+
+    // Check for overlaps before saving
+    await this.checkOverlap(createAreaDto.groupId, area.polygon);
 
     return await this.areaRepository.save(area);
   }
@@ -85,6 +88,9 @@ export class AreasService {
         coords.push(firstPoint);
       }
       area.polygon = { type: 'Polygon', coordinates: [coords] } as any;
+
+      // Check for overlaps with new polygon
+      await this.checkOverlap(area.groupId, area.polygon, area.id);
     }
 
     return await this.areaRepository.save(area);
@@ -110,5 +116,27 @@ export class AreasService {
 
   findAll() {
     return this.areaRepository.find();
+  }
+
+  // --- Helper: Check for overlaps ---
+  private async checkOverlap(groupId: string, newPolygon: any, excludeAreaId?: number) {
+    const query = this.areaRepository
+      .createQueryBuilder('area')
+      .where('area.groupId = :groupId', { groupId })
+      .andWhere(`ST_Intersects(area.polygon, ST_GeomFromGeoJSON(:newPolygon))`, {
+        newPolygon: JSON.stringify(newPolygon),
+      });
+
+    if (excludeAreaId) {
+      query.andWhere('area.id != :excludeAreaId', { excludeAreaId });
+    }
+
+    const overlappingArea = await query.getOne();
+
+    if (overlappingArea) {
+      throw new BadRequestException(
+        `This zone overlaps with existing zone: "${overlappingArea.name}". Please adjust the boundaries.`
+      );
+    }
   }
 }

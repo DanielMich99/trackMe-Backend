@@ -5,8 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Group, User, GroupMember, Location } from '@app/database';
 import Redis from 'ioredis';
 
+import { LocationModule } from '../location/location.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Group, User, GroupMember, Location])],
+  imports: [TypeOrmModule.forFeature([Group, User, GroupMember, Location]), LocationModule],
   controllers: [GroupsController],
   providers: [
     GroupsService,

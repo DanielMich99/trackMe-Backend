@@ -403,14 +403,26 @@ export default function MapPage() {
 
             <GroupSelector />
 
-            {/* Danger Zones button - positioned at bottom-left to avoid GroupSelector dropdown */}
+            {/* Bottom left buttons - Danger Zones, Alert History, Route History */}
             {activeGroupId && (
-                <div className="absolute bottom-8 left-4 z-[1000]">
+                <div className="absolute bottom-8 left-4 z-[1000] flex gap-2">
                     <button
                         onClick={() => navigate('/areas')}
                         className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-lg shadow-lg text-sm font-bold"
                     >
                         ⚠️ Danger Zones
+                    </button>
+                    <button
+                        onClick={() => navigate('/alerts')}
+                        className="bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-lg shadow-lg text-sm font-bold"
+                    >
+                        📋 Alert History
+                    </button>
+                    <button
+                        onClick={() => navigate('/routes')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg shadow-lg text-sm font-bold"
+                    >
+                        📍 Route History
                     </button>
                 </div>
             )}

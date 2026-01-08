@@ -31,9 +31,12 @@
     "@nestjs/schedule": "^6.1.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.9",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "google-auth-library": "^10.5.0",
     "ioredis": "^5.8.2",
     "kafkajs": "^2.2.4",
     "passport": "^0.7.0",
@@ -43,7 +46,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
-    "typeorm": "^0.3.28"
+    "typeorm": "^0.3.28",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

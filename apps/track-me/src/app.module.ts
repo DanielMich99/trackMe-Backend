@@ -8,9 +8,10 @@ import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';
 import { GroupsModule } from './groups/groups.module';
 import { SosModule } from './sos/sos.module';
+import { AlertsModule } from './alerts/alerts.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule, GroupsModule, SosModule],
+  imports: [ScheduleModule.forRoot(), DatabaseModule, LocationModule, AreasModule, AuthModule, GroupsModule, SosModule, AlertsModule],
   controllers: [AppController],
   providers: [AppService],
 })

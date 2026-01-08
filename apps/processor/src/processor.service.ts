@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
-import { Location, Area, User } from '@app/database';
+import { Location, Area, User, Alert } from '@app/database';
 import Redis from 'ioredis';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
@@ -9,7 +9,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 export class ProcessorService {
   private readonly logger = new Logger(ProcessorService.name);
   private readonly REDIS_KEY = 'location_buffer';
-  private readonly MIN_DISTANCE_METERS = 50; // Only save if moved more than 50 meters
+  private readonly MIN_DISTANCE_METERS = 1; // Only save if moved more than 50 meters
 
   constructor(
     @InjectRepository(Location)
@@ -18,30 +18,36 @@ export class ProcessorService {
     private areaRepository: Repository<Area>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Alert)
+    private alertRepository: Repository<Alert>,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) { }
 
   // --- 1. Receive message from Kafka and save to Redis ---
   async processLocation(data: any) {
-    const locationString = JSON.stringify(data);
+    try {
+      const locationString = JSON.stringify(data);
 
-    // 1. Push to buffer (for batch DB save)
-    await this.redis.rpush(this.REDIS_KEY, locationString);
+      // 1. Push to buffer (for batch DB save)
+      await this.redis.rpush(this.REDIS_KEY, locationString);
 
-    // 2. Update read cache - store latest location for fast retrieval
-    await this.redis.set(`user:${data.userId}:latest_location`, locationString);
+      // 2. Update read cache - store latest location for fast retrieval
+      await this.redis.set(`user:${data.userId}:latest_location`, locationString);
 
-    // 3. Get user's approved groups (cache first, then DB)
-    const groupIds = await this.getUserGroupIds(data.userId);
+      // 3. Get user's approved groups (cache first, then DB)
+      const groupIds = await this.getUserGroupIds(data.userId);
 
-    // 4. Publish for real-time WebSocket updates (include groupIds to avoid DB query in gateway)
-    const messageWithGroups = JSON.stringify({ ...data, groupIds });
-    await this.redis.publish('live_updates', messageWithGroups);
+      // 4. Publish for real-time WebSocket updates (include groupIds to avoid DB query in gateway)
+      const messageWithGroups = JSON.stringify({ ...data, groupIds });
+      await this.redis.publish('live_updates', messageWithGroups);
 
-    // 5. Check geofences immediately for real-time alerts
-    await this.checkGeofenceImmediate(data, groupIds);
+      // 5. Check geofences immediately for real-time alerts
+      await this.checkGeofenceImmediate(data, groupIds);
 
-    this.logger.log(`📥 Processor received location for User ${data.userId} (cached + buffered)`);
+      this.logger.log(`📥 Processor received location for User ${data.userId} (cached + buffered)`);
+    } catch (error) {
+      this.logger.error(`❌ Error processing location for user ${data?.userId}: ${error.message}`, error.stack);
+    }
   }
 
   // --- Real-time geofence check (called on every location update) ---
@@ -54,42 +60,113 @@ export class ProcessorService {
       coordinates: [data.longitude, data.latitude],
     };
 
-    // Find danger zones that contain this point
-    const dangerZones = await this.areaRepository
+    // Find ALL danger zones that contain this point (for any alertOn type)
+    const currentZones = await this.areaRepository
       .createQueryBuilder('area')
       .where(`ST_Contains(area.polygon, ST_GeomFromGeoJSON(:point))`, {
         point: JSON.stringify(point),
       })
       .andWhere('area.groupId IN (:...groupIds)', { groupIds })
       .andWhere('(area.targetUserId IS NULL OR area.targetUserId = :userId)', { userId: data.userId })
-      .andWhere("area.type = 'DANGER'")
+      .andWhere("area.type IN (:...types)", { types: ['DANGER', 'SAFE'] })
       .getMany();
 
-    for (const area of dangerZones) {
-      if (area.alertOn === 'ENTER' || area.alertOn === 'BOTH') {
-        // Check cooldown: don't spam alerts for same user/area within 5 minutes
-        const alertKey = `alert:${data.userId}:${area.id}`;
-        const recentlyAlerted = await this.redis.get(alertKey);
+    const currentZoneIds = new Set(currentZones.map(z => z.id));
 
-        if (!recentlyAlerted) {
-          // Get user name for the alert
-          const user = await this.userRepository.findOne({ where: { id: data.userId } });
-          const userName = user?.name || data.userId;
+    // Get previous zones from Redis
+    const zoneStateKey = `user:${data.userId}:zones`;
+    const previousZonesJson = await this.redis.get(zoneStateKey);
+    const previousZoneIds: number[] = previousZonesJson ? JSON.parse(previousZonesJson) : [];
 
-          this.logger.warn(`🚨 REAL-TIME ALERT: ${userName} entered DANGER ZONE: ${area.name}`);
+    // Find ENTERED zones (in current but not in previous)
+    const enteredZoneIds = [...currentZoneIds].filter(id => !previousZoneIds.includes(id));
 
-          await this.redis.publish('alerts', JSON.stringify({
-            type: 'DANGER_ZONE_ENTER',
-            user: userName,
-            area: area.name,
-            groupId: area.groupId,
-          }));
+    // Find LEFT zones (in previous but not in current)
+    const leftZoneIds = previousZoneIds.filter(id => !currentZoneIds.has(id));
 
-          // Set cooldown (5 minutes = 300 seconds)
-          await this.redis.set(alertKey, '1', 'EX', 300);
-        }
+    // Get user name once for all alerts
+    let userName = '';
+    const getUser = async (): Promise<string> => {
+      if (!userName) {
+        const user = await this.userRepository.findOne({ where: { id: data.userId } });
+        userName = user?.name || data.userId;
+      }
+      return userName;
+    };
+
+    // Process ENTER alerts
+    for (const zoneId of enteredZoneIds) {
+      const zone = currentZones.find(z => z.id === zoneId);
+      if (zone) {
+        await this.handleZoneAlert(data.userId, zone, 'ENTER', getUser);
       }
     }
+
+    // Process LEAVE alerts
+    for (const zoneId of leftZoneIds) {
+      // Need to fetch zone info for left zones as they are not in currentZones
+      const zone = await this.areaRepository.findOne({ where: { id: zoneId } });
+      if (zone) {
+        await this.handleZoneAlert(data.userId, zone, 'LEAVE', getUser);
+      }
+    }
+
+    // Update zone state in Redis (TTL 10 minutes)
+    await this.redis.set(zoneStateKey, JSON.stringify([...currentZoneIds]), 'EX', 600);
+  }
+
+  // --- Helper: Handle Zone Alert Logic (DRY) ---
+  private async handleZoneAlert(
+    userId: string,
+    zone: Area,
+    trigger: 'ENTER' | 'LEAVE',
+    getUserFn: () => Promise<string>
+  ) {
+    if (zone.alertOn !== trigger && zone.alertOn !== 'BOTH') return;
+
+    const alertKey = `alert:${trigger.toLowerCase()}:${userId}:${zone.id}`;
+
+    // Check if user was recently alerted to avoid spam
+    const recentlyAlerted = await this.redis.get(alertKey);
+    if (recentlyAlerted) return;
+
+    const name = await getUserFn();
+    const isDanger = zone.type === 'DANGER';
+
+    // Determine event type and logging details
+    let eventType: string;
+    if (trigger === 'ENTER') {
+      eventType = isDanger ? 'DANGER_ZONE_ENTER' : 'SAFE_ZONE_ENTER';
+    } else {
+      eventType = isDanger ? 'DANGER_ZONE_LEAVE' : 'SAFE_ZONE_LEAVE';
+    }
+
+    const logPrefix = isDanger ? '🚨' : (trigger === 'ENTER' ? '✅' : '⚠️');
+    const logType = isDanger ? 'DANGER' : 'SAFE';
+
+    this.logger.warn(`${logPrefix} ${trigger} ALERT: ${name} ${trigger === 'ENTER' ? 'entered' : 'left'} ${logType} ZONE: ${zone.name}`);
+
+    // Create and save alert to DB
+    const alert = this.alertRepository.create({
+      groupId: zone.groupId,
+      userId: userId,
+      userName: name,
+      areaId: zone.id,
+      areaName: zone.name,
+      type: eventType as any,
+    });
+    await this.alertRepository.save(alert);
+
+    // Publish to Redis for real-time frontend updates
+    await this.redis.publish('alerts', JSON.stringify({
+      type: eventType,
+      user: name,
+      area: zone.name,
+      groupId: zone.groupId,
+    }));
+
+    // Set cooldown prevent multiple alerts for 5 minutes
+    await this.redis.set(alertKey, '1', 'EX', 300);
   }
 
   // --- Helper: Get user's group IDs from cache or DB ---
@@ -153,7 +230,7 @@ export class ProcessorService {
     const savedLocations = await this.locationRepository.save(locationsToSave);
     this.logger.log(`✅ Processor saved ${savedLocations.length} locations to DB.`);
 
-    await this.checkGeofences(savedLocations);
+
   }
 
   // --- Helper: Atomically pop all items from Redis buffer ---
@@ -273,44 +350,7 @@ export class ProcessorService {
     return deg * (Math.PI / 180);
   }
 
-  // --- 3. Geofencing check (Safe/Danger Zones) ---
-  private async checkGeofences(locations: Location[]) {
-    for (const location of locations) {
-      const user = await this.userRepository.findOne({
-        where: { id: location.userId },
-        relations: ['memberships', 'memberships.group'],
-      });
 
-      if (!user || !user.memberships || user.memberships.length === 0) continue;
-
-      const groupIds = user.memberships.map(m => m.group.id);
-
-      const triggeringAreas = await this.areaRepository
-        .createQueryBuilder('area')
-        .where(`ST_Contains(area.polygon, ST_GeomFromGeoJSON(:point))`, {
-          point: JSON.stringify(location.geom)
-        })
-        .andWhere('area.groupId IN (:...groupIds)', { groupIds })
-        .andWhere('(area.targetUserId IS NULL OR area.targetUserId = :userId)', { userId: user.id })
-        .getMany();
-
-      // Check if user is inside a danger zone
-      const dangerZones = triggeringAreas.filter(a => a.type === 'DANGER');
-      dangerZones.forEach(area => {
-        if (area.alertOn === 'ENTER' || area.alertOn === 'BOTH') {
-          this.logger.warn(`🚨 ALERT: User ${user.name} is INSIDE DANGER ZONE: ${area.name}`);
-          this.redis.publish('alerts', JSON.stringify({
-            type: 'DANGER_ZONE_ENTER',
-            user: user.name,
-            area: area.name,
-            groupId: area.groupId
-          }));
-        }
-      });
-
-      // TODO: Check if user is outside a safe zone (requires tracking previous state)
-    }
-  }
 
   // --- 4. Cleanup old locations (runs every 10 minutes, deletes locations older than 10 minutes) ---
   @Cron(CronExpression.EVERY_10_MINUTES)

@@ -24,12 +24,23 @@ export class AuthService {
     const user = this.userRepository.create({
       email: registerDto.email,
       password: hashedPassword, // Store hashed password, not the original!
-      name: registerDto.email.split('@')[0], // Temporary name from email
+      name: registerDto.name || registerDto.email.split('@')[0], // Use name if provided
     });
 
     try {
-      await this.userRepository.save(user);
-      return { message: 'User registered successfully' };
+      const savedUser = await this.userRepository.save(user);
+
+      // 3. Create JWT token (same as login)
+      const payload = { sub: savedUser.id, email: savedUser.email };
+
+      return {
+        accessToken: this.jwtService.sign(payload),
+        user: {
+          id: savedUser.id,
+          email: savedUser.email,
+          name: savedUser.name,
+        },
+      };
     } catch (error) {
       // Error code 23505 = duplicate email (already exists)
       if (error.code === '23505') {
@@ -62,8 +73,12 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email };
 
     return {
-      access_token: this.jwtService.sign(payload), // Digital signature
-      userId: user.id, // Also return ID for convenience
+      accessToken: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
     };
   }
 }

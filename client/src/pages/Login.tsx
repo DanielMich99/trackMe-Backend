@@ -35,9 +35,8 @@ export default function Login() {
             const res = await api.post('/auth/login', { email, password });
 
             // Store JWT token and user data in global state and localStorage
-            // Backend returns: { access_token, userId }
-            // We manually include email since it's not part of the response
-            setAuth(res.data.access_token, { id: res.data.userId, email });
+            // Backend returns: { accessToken, user: { id, email, name } }
+            setAuth(res.data.accessToken, res.data.user);
 
             // Navigate to the map page on successful authentication
             navigate('/map');

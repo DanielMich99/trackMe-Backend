@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Group, User, GroupMember, GroupRole, MemberStatus } from '@app/database';
 import { Repository } from 'typeorm';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
 import Redis from 'ioredis';
+import { LocationGateway } from '../location/location.gateway';
 
 @Injectable()
 export class GroupsService {
@@ -16,6 +17,7 @@ export class GroupsService {
     @InjectRepository(GroupMember)
     private memberRepository: Repository<GroupMember>,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    private readonly locationGateway: LocationGateway,
   ) { }
 
   // --- Create new group ---
@@ -28,7 +30,18 @@ export class GroupsService {
       name: createGroupDto.name,
       joinCode: joinCode,
     });
-    const savedGroup = await this.groupRepository.save(group);
+
+    let savedGroup;
+    try {
+      savedGroup = await this.groupRepository.save(group);
+    } catch (error) {
+      if (error.code === '23505') { // Postgres unique_violation code
+        // In a perfect world, we'd retry with a new code here.
+        // For now, fail gracefully so the user knows to try again.
+        throw new ConflictException('Failed to generate a unique group code. Please try again.');
+      }
+      throw error;
+    }
 
     // 3. Create membership (Admin + Approved)
     const member = this.memberRepository.create({
@@ -42,6 +55,9 @@ export class GroupsService {
 
     // Invalidate user's group cache
     await this.redis.del(`user:${userId}:groups`);
+
+    // Force socket to join new group room
+    await this.locationGateway.addUserToGroup(userId, savedGroup.id);
 
     return savedGroup;
   }
@@ -106,6 +122,7 @@ export class GroupsService {
         ...m.group,
         // Add flag to indicate user's status in this group
         myStatus: m.status,
+        myRole: m.role, // Add user's role (ADMIN/MEMBER)
         // Only show APPROVED members if user is approved in this group
         // PENDING users shouldn't see the member list
         users: isPending ? [] : m.group.members
@@ -141,6 +158,9 @@ export class GroupsService {
 
     // Invalidate user's group cache so their locations broadcast to this group
     await this.redis.del(`user:${targetUserId}:groups`);
+
+    // Force socket to join new group room
+    await this.locationGateway.addUserToGroup(targetUserId, groupId);
 
     console.log(`[Approve] Success. Member status is now ${res.status}`);
     return res;
@@ -240,6 +260,7 @@ export class GroupsService {
         const parsed = JSON.parse(cachedLocation);
         locations.push({
           userId: m.user.id,
+          userName: m.user.name,
           latitude: parsed.latitude,
           longitude: parsed.longitude,
           timestamp: parsed.timestamp
@@ -258,18 +279,11 @@ export class GroupsService {
 
           locations.push({
             userId: m.user.id,
+            userName: m.user.name,
             latitude: lastLocation.latitude,
             longitude: lastLocation.longitude,
             timestamp: lastLocation.timestamp.toISOString()
           });
-
-          // Store in cache for next time
-          await this.redis.set(`user:${m.user.id}:latest_location`, JSON.stringify({
-            userId: m.user.id,
-            latitude: lastLocation.latitude,
-            longitude: lastLocation.longitude,
-            timestamp: lastLocation.timestamp.toISOString()
-          }));
         }
         cacheMisses++;
       }

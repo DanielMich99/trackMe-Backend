@@ -3,6 +3,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MapPage from './pages/MapPage';
 import AreasPage from './pages/AreasPage';
+import AlertsPage from './pages/AlertsPage';
+import RoutesPage from './pages/RoutesPage';
 import { useAuthStore } from './store/authStore';
 
 // Component that protects routes requiring authentication
@@ -35,6 +37,26 @@ function App() {
           element={
             <ProtectedRoute>
               <AreasPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected alerts history page */}
+        <Route
+          path="/alerts"
+          element={
+            <ProtectedRoute>
+              <AlertsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected routes history page */}
+        <Route
+          path="/routes"
+          element={
+            <ProtectedRoute>
+              <RoutesPage />
             </ProtectedRoute>
           }
         />

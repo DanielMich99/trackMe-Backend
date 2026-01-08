@@ -62,7 +62,10 @@ export class LocationGateway
             this.logger.warn(`🚨 Alert received: ${alert.user} entered ${alert.area}`);
 
             // Emit to all users in the group
-            this.server.to(alert.groupId).emit('dangerZoneAlert', {
+            // Determine event name based on type
+            const eventName = alert.type.includes('SAFE') ? 'safeZoneAlert' : 'dangerZoneAlert';
+
+            this.server.to(alert.groupId).emit(eventName, {
               type: alert.type,
               userName: alert.user,
               areaName: alert.area,
@@ -134,5 +137,33 @@ export class LocationGateway
     );
 
     return result;
+  }
+
+  // --- Manually join a group room (e.g. after creating/joining a group) ---
+  @SubscribeMessage('joinGroup')
+  async handleJoinGroup(
+    @MessageBody() data: { groupId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (data.groupId) {
+      await client.join(data.groupId);
+      this.logger.log(`Client ${client.id} manually joined group ${data.groupId}`);
+    }
+  }
+
+  // --- Public helper to force a user's socket(s) to join a group room ---
+  async addUserToGroup(userId: string, groupId: string) {
+    let count = 0;
+    for (const [_, socket] of this.server.sockets.sockets) {
+      const socketUserId = socket.handshake.query.userId as string;
+      if (socketUserId === userId) {
+        await socket.join(groupId);
+        count++;
+        this.logger.log(`🔌 Added socket ${socket.id} (User ${userId}) to group ${groupId} by server request`);
+      }
+    }
+    if (count === 0) {
+      this.logger.debug(`⚠️ No active sockets found for User ${userId} to join group ${groupId}`);
+    }
   }
 }

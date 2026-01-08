@@ -4,13 +4,13 @@ import { LocationService } from './location.service';
 import { LocationController } from './location.controller';
 import { LocationGateway } from './location.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Location, User, Area } from '@app/database';
+import { Location, User, Area, GroupMember } from '@app/database';
 import Redis from 'ioredis';
 // (Remove Redis import if present, we're replacing it with Kafka)
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Location, User, Area]),
+    TypeOrmModule.forFeature([Location, User, Area, GroupMember]),
     // Kafka client configuration
     ClientsModule.register([
       {

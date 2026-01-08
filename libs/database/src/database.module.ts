@@ -5,6 +5,7 @@ import { Location } from './entities/location.entity';
 import { Area } from './entities/area.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
+import { Alert } from './entities/alert.entity';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { GroupMember } from './entities/group-member.entity';
       username: 'myuser',
       password: 'mypassword',
       database: 'track_me_db',
-      entities: [User, Location, Area, Group, GroupMember],
+      entities: [User, Location, Area, Group, GroupMember, Alert],
       synchronize: true,
     }),
   ],

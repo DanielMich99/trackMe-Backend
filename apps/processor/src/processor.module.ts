@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ProcessorController } from './processor.controller';
 import { ProcessorService } from './processor.service';
-import { DatabaseModule, Location, User, Area } from '@app/database';
+import { DatabaseModule, Location, User, Area, Alert } from '@app/database';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import Redis from 'ioredis';
@@ -11,7 +11,7 @@ import Redis from 'ioredis';
     // 1. חיבור לדאטה בייס (דרך הספרייה המשותפת)
     DatabaseModule,
     // 2. רישום הטבלאות שאנחנו הולכים לעבוד איתן
-    TypeOrmModule.forFeature([Location, User, Area]),
+    TypeOrmModule.forFeature([Location, User, Area, Alert]),
     // 3. הפעלת מנגנון התזמון (Cron)
     ScheduleModule.forRoot(),
   ],
