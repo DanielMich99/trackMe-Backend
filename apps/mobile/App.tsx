@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Text, Platform, I18nManager } from 'react-native';
+
+// Force LTR for Hebrew devices
+try {
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+} catch (e) {
+  console.log(e);
+}
 import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from './src/store/authStore';
 import LoginScreen from './src/screens/LoginScreen';

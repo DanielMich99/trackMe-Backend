@@ -9,6 +9,13 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { Ionicons } from '@expo/vector-icons';
+import {
+    GoogleSignin,
+    statusCodes,
+    isSuccessResponse,
+    isErrorWithCode
+} from '@react-native-google-signin/google-signin';
 
 interface Props {
     onSwitchToRegister: () => void;
@@ -20,6 +27,50 @@ export default function LoginScreen({ onSwitchToRegister }: Props) {
     const [loading, setLoading] = useState(false);
 
     const login = useAuthStore((state) => state.login);
+    const googleLogin = useAuthStore((state) => state.googleLogin);
+
+    React.useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+            scopes: ['profile', 'email'],
+        });
+    }, []);
+
+    const handleGoogleSignIn = async () => {
+        setLoading(true);
+        try {
+            await GoogleSignin.hasPlayServices();
+            const response = await GoogleSignin.signIn();
+
+            if (isSuccessResponse(response)) {
+                const { idToken } = response.data;
+                if (idToken) {
+                    await googleLogin(idToken);
+                } else {
+                    Alert.alert('Login Error', 'No ID token found');
+                }
+            }
+        } catch (error: any) {
+            if (isErrorWithCode(error)) {
+                switch (error.code) {
+                    case statusCodes.SIGN_IN_CANCELLED:
+                        break;
+                    case statusCodes.IN_PROGRESS:
+                        Alert.alert('In Progress', 'Sign in is already in progress');
+                        break;
+                    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+                        Alert.alert('Error', 'Google Play Services not available');
+                        break;
+                    default:
+                        Alert.alert('Google Login Error', error.message);
+                }
+            } else {
+                Alert.alert('Google Login Error', error.message || 'Unknown error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -114,6 +165,11 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: 'center',
         marginBottom: 16,
+    },
+    googleButton: {
+        backgroundColor: '#DB4437', // Google Red
+        flexDirection: 'row',
+        justifyContent: 'center',
     },
     buttonText: {
         color: '#fff',

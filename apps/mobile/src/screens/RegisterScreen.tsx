@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,6 +9,13 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { Ionicons } from '@expo/vector-icons';
+import {
+    GoogleSignin,
+    statusCodes,
+    isSuccessResponse,
+    isErrorWithCode
+} from '@react-native-google-signin/google-signin';
 
 interface Props {
     onSwitchToLogin: () => void;
@@ -21,6 +28,55 @@ export default function RegisterScreen({ onSwitchToLogin }: Props) {
     const [loading, setLoading] = useState(false);
 
     const register = useAuthStore((state) => state.register);
+    const googleLogin = useAuthStore((state) => state.googleLogin);
+
+    useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // From Google Cloud Console (Web)
+            scopes: ['profile', 'email'],
+        });
+    }, []);
+
+    const handleGoogleSignIn = async () => {
+        setLoading(true);
+        try {
+            await GoogleSignin.hasPlayServices();
+            const response = await GoogleSignin.signIn();
+
+            if (isSuccessResponse(response)) {
+                // response.data.idToken is the one we want
+                const { idToken } = response.data;
+                if (idToken) {
+                    await googleLogin(idToken);
+                } else {
+                    Alert.alert('Login Error', 'No ID token found');
+                }
+            } else {
+                // sign in was cancelled by user (if flow allows checking this state without error)
+            }
+        } catch (error: any) {
+            if (isErrorWithCode(error)) {
+                switch (error.code) {
+                    case statusCodes.SIGN_IN_CANCELLED:
+                        // user cancelled the login flow
+                        break;
+                    case statusCodes.IN_PROGRESS:
+                        // operation (e.g. sign in) already in progress
+                        Alert.alert('In Progress', 'Sign in is already in progress');
+                        break;
+                    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+                        Alert.alert('Error', 'Google Play Services not available');
+                        break;
+                    default:
+                        Alert.alert('Google Login Error', error.message);
+                }
+            } else {
+                Alert.alert('Google Login Error', error.message || 'Unknown error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
@@ -82,6 +138,15 @@ export default function RegisterScreen({ onSwitchToLogin }: Props) {
                 )}
             </TouchableOpacity>
 
+            <TouchableOpacity
+                style={[styles.button, styles.googleButton]}
+                onPress={handleGoogleSignIn}
+                disabled={loading}
+            >
+                <Ionicons name="logo-google" size={24} color="white" style={{ marginRight: 10 }} />
+                <Text style={styles.buttonText}>Sign in with Google</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity onPress={onSwitchToLogin}>
                 <Text style={styles.link}>Already have an account? Login</Text>
             </TouchableOpacity>
@@ -124,10 +189,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
     },
+    googleButton: {
+        backgroundColor: '#DB4437', // Google Red
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
     buttonText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+
     },
     link: {
         color: '#3b82f6',

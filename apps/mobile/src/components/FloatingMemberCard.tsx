@@ -16,6 +16,8 @@ interface Member {
     userId: string;
     userName: string;
     role?: string;
+    latitude: number;
+    longitude: number;
 }
 
 interface FloatingMemberCardProps {

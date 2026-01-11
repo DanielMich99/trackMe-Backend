@@ -179,6 +179,7 @@ export default function MapScreen() {
     const mapRef = useRef<MapView>(null);
     const [flashingMemberId, setFlashingMemberId] = useState<string | null>(null);
     const [flashActive, setFlashActive] = useState(false);
+    const [isZoomedOut, setIsZoomedOut] = useState(false);
 
     // Flashing Effect
     useEffect(() => {
@@ -211,6 +212,11 @@ export default function MapScreen() {
         longitude: myLocation?.coords.longitude || 34.945,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
+    };
+
+    const handleRegionChange = (region: Region) => {
+        // Threshold: if we see more than ~1 degree of latitude, we are "zoomed out"
+        setIsZoomedOut(region.latitudeDelta > 1.0);
     };
 
     return (
@@ -248,18 +254,29 @@ export default function MapScreen() {
                 initialRegion={initialRegion}
                 showsUserLocation={false}
                 showsMyLocationButton={true}
+                onRegionChangeComplete={handleRegionChange}
             >
                 {/* Me */}
                 {myLocation && (
                     <Marker
+                        // Reverting to the "Key Hack" + "Container Wrapper" approach
+                        // This fixed the offset (Turkey) issue previously
+                        key={`me-${isZoomedOut ? 'out' : 'in'}`}
                         coordinate={{
                             latitude: myLocation.coords.latitude,
                             longitude: myLocation.coords.longitude,
                         }}
                         zIndex={2}
+                        anchor={{ x: 0.5, y: 0.5 }}
                     >
-                        <View style={[styles.circleMarker, { backgroundColor: '#22c55e' }]}>
-                            <Text style={styles.circleText}>Me</Text>
+                        <View style={styles.markerContainer}>
+                            {isZoomedOut ? (
+                                <View style={[styles.dotMarker, { backgroundColor: '#22c55e' }]} />
+                            ) : (
+                                <View style={[styles.circleMarker, { backgroundColor: '#22c55e' }]}>
+                                    <Text style={styles.circleText}>Me</Text>
+                                </View>
+                            )}
                         </View>
                     </Marker>
                 )}
@@ -267,23 +284,33 @@ export default function MapScreen() {
                 {/* Members */}
                 {members
                     .filter(m => m.userId !== user?.id)
-                    .map((member, index) => {
+                    .map((member) => {
                         const isFlashing = flashingMemberId === member.userId && flashActive;
-                        const markerColor = isFlashing ? '#ef4444' : '#3b82f6';
+                        const baseColor = isFlashing ? '#ef4444' : '#3b82f6';
 
                         return (
                             <Marker
-                                key={member.userId || index}
+                                key={`${member.userId}-${isZoomedOut ? 'out' : 'in'}`}
                                 coordinate={{ latitude: member.latitude, longitude: member.longitude }}
                                 zIndex={isFlashing ? 10 : 1}
+                                anchor={{ x: 0.5, y: 0.5 }}
                             >
-                                <View style={[styles.circleMarker, {
-                                    backgroundColor: markerColor,
-                                    transform: [{ scale: isFlashing ? 1.2 : 1 }]
-                                }]}>
-                                    <Text style={styles.circleText}>
-                                        {member.userName.substring(0, 10)}
-                                    </Text>
+                                <View style={styles.markerContainer}>
+                                    {isZoomedOut ? (
+                                        <View style={[styles.dotMarker, {
+                                            backgroundColor: baseColor,
+                                            transform: [{ scale: isFlashing ? 1.5 : 1 }]
+                                        }]} />
+                                    ) : (
+                                        <View style={[styles.circleMarker, {
+                                            backgroundColor: baseColor,
+                                            transform: [{ scale: isFlashing ? 1.2 : 1 }]
+                                        }]}>
+                                            <Text style={styles.circleText}>
+                                                {member.userName.substring(0, 10)}
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                             </Marker>
                         );
@@ -383,4 +410,19 @@ const styles = StyleSheet.create({
     },
     sosButtonActive: { backgroundColor: '#7f1d1d' },
     sosText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+    dotMarker: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2,
+        borderColor: '#fff',
+        elevation: 3,
+    },
+    markerContainer: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
 });

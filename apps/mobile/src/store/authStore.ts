@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '../lib/storage'; // Use our new safe wrapper
 import { api } from '../lib/api';
 import { User, Group } from '../types';
 
@@ -14,6 +14,7 @@ interface AuthState {
     isHydrated: boolean;
 
     login: (email: string, password: string) => Promise<void>;
+    googleLogin: (token: string) => Promise<void>;
     register: (name: string, email: string, password: string) => Promise<void>;
     logout: () => void;
     fetchGroups: () => Promise<void>;
@@ -39,15 +40,38 @@ export const useAuthStore = create<AuthState>()(
                     const res = await api.post('/auth/login', { email, password });
                     const { accessToken, user } = res.data;
                     set({ token: accessToken, user, isLoading: false });
-                    // persist a simple token key so api interceptor can read it immediately
+
+                    // Manually persist token for API interceptor usage
                     try {
-                        await AsyncStorage.setItem('token', accessToken);
+                        await storage.setItem('token', accessToken);
                     } catch (e) {
-                        console.log('[authStore] failed to persist token to AsyncStorage', e);
+                        console.log('[authStore] failed to persist token', e);
                     }
+
                     await get().fetchGroups();
                 } catch (err: any) {
                     const msg = err.response?.data?.message || 'Login failed';
+                    set({ error: msg, isLoading: false });
+                    throw err;
+                }
+            },
+
+            googleLogin: async (token) => {
+                set({ isLoading: true, error: null });
+                try {
+                    const res = await api.post('/auth/google-login', { token });
+                    const { accessToken, user } = res.data;
+                    set({ token: accessToken, user, isLoading: false });
+
+                    try {
+                        await storage.setItem('token', accessToken);
+                    } catch (e) {
+                        console.log('[authStore] failed to persist token', e);
+                    }
+
+                    await get().fetchGroups();
+                } catch (err: any) {
+                    const msg = err.response?.data?.message || 'Google Login failed';
                     set({ error: msg, isLoading: false });
                     throw err;
                 }
@@ -59,12 +83,13 @@ export const useAuthStore = create<AuthState>()(
                     const res = await api.post('/auth/register', { name, email, password });
                     const { accessToken, user } = res.data;
                     set({ token: accessToken, user, isLoading: false });
-                    // persist a simple token key so api interceptor can read it immediately
+
                     try {
-                        await AsyncStorage.setItem('token', accessToken);
+                        await storage.setItem('token', accessToken);
                     } catch (e) {
-                        console.log('[authStore] failed to persist token to AsyncStorage', e);
+                        console.log('[authStore] failed to persist token', e);
                     }
+
                     await get().fetchGroups();
                 } catch (err: any) {
                     const msg = err.response?.data?.message || 'Registration failed';
@@ -81,8 +106,7 @@ export const useAuthStore = create<AuthState>()(
                     activeGroupId: null,
                     error: null
                 });
-                // remove simple token key
-                AsyncStorage.removeItem('token').catch((e) => console.log('[authStore] failed to remove token', e));
+                storage.removeItem('token').catch(e => console.log('logout storage error', e));
             },
 
             fetchGroups: async () => {
@@ -116,7 +140,8 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'auth-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            // Use OUR custom storage wrapper
+            storage: createJSONStorage(() => storage),
             partialize: (state) => ({
                 token: state.token,
                 user: state.user,
