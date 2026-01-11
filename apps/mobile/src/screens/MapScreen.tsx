@@ -32,6 +32,89 @@ interface DangerZone {
     };
 }
 
+// --- Marker Components ---
+const MeMarker = ({ coordinate, isZoomedOut }: { coordinate: any, isZoomedOut: boolean }) => {
+    const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+    useEffect(() => {
+        setTracksViewChanges(true);
+        const timer = setTimeout(() => {
+            setTracksViewChanges(false);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [isZoomedOut]);
+
+    return (
+        <Marker
+            coordinate={coordinate}
+            zIndex={2}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={tracksViewChanges}
+            key="me"
+        >
+            <View style={styles.markerContainer}>
+                {isZoomedOut ? (
+                    <View style={[styles.dotMarker, { backgroundColor: '#22c55e' }]} />
+                ) : (
+                    <View style={[styles.circleMarker, { backgroundColor: '#22c55e' }]}>
+                        <Text style={styles.circleText}>Me</Text>
+                    </View>
+                )}
+            </View>
+        </Marker>
+    );
+};
+
+const MemberMarker = ({
+    member,
+    isZoomedOut,
+    isFlashing
+}: {
+    member: MemberLocation,
+    isZoomedOut: boolean,
+    isFlashing: boolean
+}) => {
+    const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+    useEffect(() => {
+        setTracksViewChanges(true);
+        const timer = setTimeout(() => {
+            setTracksViewChanges(false);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [isFlashing, isZoomedOut]);
+
+    const baseColor = isFlashing ? '#ef4444' : '#3b82f6';
+
+    return (
+        <Marker
+            coordinate={{ latitude: member.latitude, longitude: member.longitude }}
+            zIndex={isFlashing ? 10 : 1}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={tracksViewChanges}
+            key={member.userId}
+        >
+            <View style={styles.markerContainer}>
+                {isZoomedOut ? (
+                    <View style={[styles.dotMarker, {
+                        backgroundColor: baseColor,
+                        transform: [{ scale: isFlashing ? 1.5 : 1 }]
+                    }]} />
+                ) : (
+                    <View style={[styles.circleMarker, {
+                        backgroundColor: baseColor,
+                        transform: [{ scale: isFlashing ? 1.2 : 1 }]
+                    }]}>
+                        <Text style={styles.circleText}>
+                            {member.userName.substring(0, 10)}
+                        </Text>
+                    </View>
+                )}
+            </View>
+        </Marker>
+    );
+};
+
 // --- Logic Hook ---
 const useMapLogic = () => {
     const { user, groups, activeGroupId, setActiveGroup, fetchGroups, logout } = useAuthStore();
@@ -258,27 +341,13 @@ export default function MapScreen() {
             >
                 {/* Me */}
                 {myLocation && (
-                    <Marker
-                        // Reverting to the "Key Hack" + "Container Wrapper" approach
-                        // This fixed the offset (Turkey) issue previously
-                        key={`me-${isZoomedOut ? 'out' : 'in'}`}
+                    <MeMarker
                         coordinate={{
                             latitude: myLocation.coords.latitude,
                             longitude: myLocation.coords.longitude,
                         }}
-                        zIndex={2}
-                        anchor={{ x: 0.5, y: 0.5 }}
-                    >
-                        <View style={styles.markerContainer}>
-                            {isZoomedOut ? (
-                                <View style={[styles.dotMarker, { backgroundColor: '#22c55e' }]} />
-                            ) : (
-                                <View style={[styles.circleMarker, { backgroundColor: '#22c55e' }]}>
-                                    <Text style={styles.circleText}>Me</Text>
-                                </View>
-                            )}
-                        </View>
-                    </Marker>
+                        isZoomedOut={isZoomedOut}
+                    />
                 )}
 
                 {/* Members */}
@@ -286,33 +355,13 @@ export default function MapScreen() {
                     .filter(m => m.userId !== user?.id)
                     .map((member) => {
                         const isFlashing = flashingMemberId === member.userId && flashActive;
-                        const baseColor = isFlashing ? '#ef4444' : '#3b82f6';
-
                         return (
-                            <Marker
-                                key={`${member.userId}-${isZoomedOut ? 'out' : 'in'}`}
-                                coordinate={{ latitude: member.latitude, longitude: member.longitude }}
-                                zIndex={isFlashing ? 10 : 1}
-                                anchor={{ x: 0.5, y: 0.5 }}
-                            >
-                                <View style={styles.markerContainer}>
-                                    {isZoomedOut ? (
-                                        <View style={[styles.dotMarker, {
-                                            backgroundColor: baseColor,
-                                            transform: [{ scale: isFlashing ? 1.5 : 1 }]
-                                        }]} />
-                                    ) : (
-                                        <View style={[styles.circleMarker, {
-                                            backgroundColor: baseColor,
-                                            transform: [{ scale: isFlashing ? 1.2 : 1 }]
-                                        }]}>
-                                            <Text style={styles.circleText}>
-                                                {member.userName.substring(0, 10)}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </Marker>
+                            <MemberMarker
+                                key={member.userId}
+                                member={member}
+                                isZoomedOut={isZoomedOut}
+                                isFlashing={isFlashing}
+                            />
                         );
                     })}
 
