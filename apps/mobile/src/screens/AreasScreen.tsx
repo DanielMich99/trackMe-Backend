@@ -14,6 +14,7 @@ import {
     KeyboardAvoidingView,
 } from 'react-native';
 import MapView, { Polygon, Marker, MapPressEvent, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { Octicons } from '@expo/vector-icons';
@@ -115,7 +116,8 @@ const AreaMap = ({
     drawnPoints,
     onMapPress,
     onAreaPress,
-    mapRef
+    mapRef,
+    initialRegion
 }: any) => {
     const getPolygonCoords = (area: Area) => {
         return area.polygon.coordinates[0].map(coord => ({
@@ -128,12 +130,7 @@ const AreaMap = ({
         <MapView
             ref={mapRef}
             style={styles.map}
-            initialRegion={{
-                latitude: 32.0,
-                longitude: 34.945,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-            }}
+            initialRegion={initialRegion}
             onPress={onMapPress}
         >
             {areas.map((area: Area) => (
@@ -182,6 +179,18 @@ export default function AreasScreen({ onBack }: { onBack: () => void }) {
     } = useAreasLogic();
 
     const mapRef = useRef<MapView>(null);
+    const [myLocation, setMyLocation] = useState<Location.LocationObject | null>(null);
+
+    // Get user location on mount
+    useEffect(() => {
+        (async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === 'granted') {
+                const location = await Location.getCurrentPositionAsync({});
+                setMyLocation(location);
+            }
+        })();
+    }, []);
 
     // Drawing Logic
     const [isDrawing, setIsDrawing] = useState(false);
@@ -311,6 +320,18 @@ export default function AreasScreen({ onBack }: { onBack: () => void }) {
         return m?.name || m?.email || 'Selected Member';
     };
 
+    // Show loading while waiting for location
+    if (!myLocation) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text style={styles.loadingText}>Locating your position...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -366,6 +387,12 @@ export default function AreasScreen({ onBack }: { onBack: () => void }) {
                     ]);
                 }}
                 mapRef={mapRef}
+                initialRegion={{
+                    latitude: myLocation.coords.latitude,
+                    longitude: myLocation.coords.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
+                }}
             />
 
             {/* Horizontal List */}
@@ -539,4 +566,15 @@ const styles = StyleSheet.create({
     cancelFormText: { color: '#fff' },
     saveBtn: { flex: 1, padding: 14, borderRadius: 8, backgroundColor: '#22c55e', alignItems: 'center' },
     saveBtnText: { color: '#fff', fontWeight: 'bold' },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+    },
+    loadingText: {
+        color: '#94a3b8',
+        fontSize: 16,
+        marginTop: 16,
+    },
 });

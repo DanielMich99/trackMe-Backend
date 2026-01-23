@@ -12,12 +12,15 @@ import { Alert } from './entities/alert.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5435'),
-      username: 'myuser',
-      password: 'mypassword',
-      database: 'track_me_db',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      username: process.env.DB_USERNAME || 'myuser',
+      password: process.env.DB_PASSWORD || 'mypassword',
+      database: process.env.DB_NAME || 'track_me_db',
       entities: [User, Location, Area, Group, GroupMember, Alert],
-      synchronize: true,
+      synchronize: true, // TODO: set to false in production
+      ssl: process.env.DB_HOST !== 'localhost' ? {
+        rejectUnauthorized: false
+      } : false,
     }),
   ],
   exports: [TypeOrmModule],

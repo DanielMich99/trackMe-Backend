@@ -18,7 +18,9 @@ import AdminScreen from './src/screens/AdminScreen';
 import RoutesScreen from './src/screens/RoutesScreen';
 import AreasScreen from './src/screens/AreasScreen';
 import { socketManager } from './src/lib/socket';
+import { LocationTracker } from './src/components/LocationTracker';
 import GlobalAlerts from './src/components/GlobalAlerts';
+import './src/tasks/backgroundLocationTask'; // Register background task
 
 type Screen = 'map' | 'alerts' | 'admin' | 'routes' | 'areas';
 
@@ -63,7 +65,8 @@ export default function App() {
   // Main App
   return (
     <View style={styles.container}>
-      {/* Global Alerts Overlay */}
+      {/* Global Logic */}
+      <LocationTracker />
       {socketInitialized && <GlobalAlerts />}
 
       {/* Screen Content */}

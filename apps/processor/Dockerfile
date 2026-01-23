@@ -1,7 +1,7 @@
 # =============================================================================
-# Track-Me API Dockerfile
+# Processor Microservice Dockerfile
 # =============================================================================
-# Multi-stage build for NestJS API (App Runner deployment)
+# Multi-stage build for NestJS Kafka processor
 # =============================================================================
 
 # --- Stage 1: Build ---
@@ -18,8 +18,8 @@ RUN npm ci
 # Copy source files
 COPY . .
 
-# Build the track-me API application
-RUN npm run build
+# Build the processor application
+RUN npm run build processor
 
 # --- Stage 2: Production ---
 FROM node:22-alpine
@@ -35,17 +35,15 @@ RUN npm ci --only=production
 # Copy built application from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
 
+# Copy libs if needed (shared database module)
+COPY --from=builder /usr/src/app/libs ./libs
+
 # Run as non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 USER nodejs
 
-# Expose API port
-EXPOSE 3000
+# No port exposed - this is a Kafka consumer, not an HTTP server
 
-# Health check for App Runner
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
-
-# Start the API
-CMD ["node", "dist/apps/track-me/main"]
+# Start the processor microservice
+CMD ["node", "dist/apps/processor/main"]

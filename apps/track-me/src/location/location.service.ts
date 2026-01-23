@@ -28,16 +28,23 @@ export class LocationService {
 
   // --- Fast Path: Quick write to Kafka ---
   async create(createLocationDto: CreateLocationDto) {
-    // Instead of saving to DB or Redis directly, we send an "event"
-    this.kafkaClient.emit('location_update', {
-      ...createLocationDto,
-      timestamp: new Date().toISOString(),
-    });
+    try {
+      this.logger.log(`[LocationService] Creating location for user ${createLocationDto.userId}`);
 
-    this.logger.log(`Sent location to Kafka: User ${createLocationDto.userId}`);
+      // Instead of saving to DB or Redis directly, we send an "event"
+      await this.kafkaClient.emit('location_update', {
+        ...createLocationDto,
+        timestamp: new Date().toISOString(),
+      }).toPromise(); // Wait for it to detect errors
 
-    // Return immediate response to client (no need to wait for save)
-    return { status: 'sent_to_queue' };
+      this.logger.log(`[LocationService] ✅ Sent location to Kafka: User ${createLocationDto.userId}`);
+
+      // Return immediate response to client (no need to wait for save)
+      return { status: 'sent_to_queue' };
+    } catch (e) {
+      this.logger.error(`[LocationService] ❌ Failed to send to Kafka: ${e.message}`, e.stack);
+      throw e;
+    }
   }
 
   // --- Get location history for a user on a specific date ---

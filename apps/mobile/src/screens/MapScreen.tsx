@@ -7,6 +7,7 @@ import {
     Alert,
     Platform,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Region, Polygon } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -68,11 +69,13 @@ const MeMarker = ({ coordinate, isZoomedOut }: { coordinate: any, isZoomedOut: b
 const MemberMarker = ({
     member,
     isZoomedOut,
-    isFlashing
+    isFlashing,
+    onMemberPress
 }: {
     member: MemberLocation,
     isZoomedOut: boolean,
-    isFlashing: boolean
+    isFlashing: boolean,
+    onMemberPress?: (member: MemberLocation) => void
 }) => {
     const [tracksViewChanges, setTracksViewChanges] = useState(true);
 
@@ -85,6 +88,7 @@ const MemberMarker = ({
     }, [isFlashing, isZoomedOut]);
 
     const baseColor = isFlashing ? '#ef4444' : '#3b82f6';
+    const firstLetter = member.userName.charAt(0).toUpperCase();
 
     return (
         <Marker
@@ -93,6 +97,7 @@ const MemberMarker = ({
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={tracksViewChanges}
             key={member.userId}
+            onPress={() => onMemberPress?.(member)}
         >
             <View style={styles.markerContainer}>
                 {isZoomedOut ? (
@@ -106,7 +111,7 @@ const MemberMarker = ({
                         transform: [{ scale: isFlashing ? 1.2 : 1 }]
                     }]}>
                         <Text style={styles.circleText}>
-                            {member.userName.substring(0, 10)}
+                            {firstLetter}
                         </Text>
                     </View>
                 )}
@@ -148,19 +153,18 @@ const useMapLogic = () => {
         return () => clearInterval(interval);
     }, [fetchData]);
 
-    // Location Tracking
+    // Location Tracking (Display Only - handled globally by LocationTracker)
     useEffect(() => {
-        (async () => {
+        let subscription: Location.LocationSubscription | null = null;
+
+        const startTracking = async () => {
             const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Location access is required');
-                return;
-            }
+            if (status !== 'granted') return;
 
             const location = await Location.getCurrentPositionAsync({});
             setMyLocation(location);
 
-            const subscription = await Location.watchPositionAsync(
+            subscription = await Location.watchPositionAsync(
                 {
                     accuracy: Location.Accuracy.High,
                     timeInterval: 5000,
@@ -168,18 +172,18 @@ const useMapLogic = () => {
                 },
                 (newLocation) => {
                     setMyLocation(newLocation);
-                    if (activeGroupId) {
-                        api.post('/location', {
-                            latitude: newLocation.coords.latitude,
-                            longitude: newLocation.coords.longitude,
-                        }).catch(() => { });
-                    }
                 }
             );
+        };
 
-            return () => subscription.remove();
-        })();
-    }, [activeGroupId]);
+        startTracking();
+
+        return () => {
+            if (subscription) {
+                subscription.remove();
+            }
+        };
+    }, []);
 
     // Actions
     const createGroup = async (name: string) => {
@@ -263,6 +267,17 @@ export default function MapScreen() {
     const [flashingMemberId, setFlashingMemberId] = useState<string | null>(null);
     const [flashActive, setFlashActive] = useState(false);
     const [isZoomedOut, setIsZoomedOut] = useState(false);
+    const [selectedMember, setSelectedMember] = useState<MemberLocation | null>(null);
+
+    // Auto-hide selected member name after 3 seconds
+    useEffect(() => {
+        if (selectedMember) {
+            const timer = setTimeout(() => {
+                setSelectedMember(null);
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedMember]);
 
     // Flashing Effect
     useEffect(() => {
@@ -290,16 +305,41 @@ export default function MapScreen() {
         setFlashingMemberId(member.userId);
     };
 
-    const initialRegion = {
-        latitude: myLocation?.coords.latitude || 32.0,
-        longitude: myLocation?.coords.longitude || 34.945,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-    };
-
     const handleRegionChange = (region: Region) => {
         // Threshold: if we see more than ~1 degree of latitude, we are "zoomed out"
         setIsZoomedOut(region.latitudeDelta > 1.0);
+    };
+
+    // Show loading while waiting for location
+    if (!myLocation) {
+        return (
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View style={styles.headerContent}>
+                        <Image source={require('../../assets/logo.png')} style={styles.logoImage} />
+                        <View>
+                            <Text style={styles.title}>TrackMe</Text>
+                            <Text style={styles.subtitle}>Family Safety</Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+                        <AntDesign name="logout" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text style={styles.loadingText}>Locating your position...</Text>
+                </View>
+            </View>
+        );
+    }
+
+    const initialRegion = {
+        latitude: myLocation.coords.latitude,
+        longitude: myLocation.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
     };
 
     return (
@@ -340,15 +380,13 @@ export default function MapScreen() {
                 onRegionChangeComplete={handleRegionChange}
             >
                 {/* Me */}
-                {myLocation && (
-                    <MeMarker
-                        coordinate={{
-                            latitude: myLocation.coords.latitude,
-                            longitude: myLocation.coords.longitude,
-                        }}
-                        isZoomedOut={isZoomedOut}
-                    />
-                )}
+                <MeMarker
+                    coordinate={{
+                        latitude: myLocation.coords.latitude,
+                        longitude: myLocation.coords.longitude,
+                    }}
+                    isZoomedOut={isZoomedOut}
+                />
 
                 {/* Members */}
                 {members
@@ -361,6 +399,7 @@ export default function MapScreen() {
                                 member={member}
                                 isZoomedOut={isZoomedOut}
                                 isFlashing={isFlashing}
+                                onMemberPress={setSelectedMember}
                             />
                         );
                     })}
@@ -383,6 +422,13 @@ export default function MapScreen() {
                     );
                 })}
             </MapView>
+
+            {/* Selected Member Name Label */}
+            {selectedMember && (
+                <View style={styles.memberNameLabel}>
+                    <Text style={styles.memberNameText}>{selectedMember.userName}</Text>
+                </View>
+            )}
 
             {/* SOS Button */}
             <TouchableOpacity
@@ -473,5 +519,37 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'transparent',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+    },
+    loadingText: {
+        color: '#94a3b8',
+        fontSize: 16,
+        marginTop: 16,
+    },
+    memberNameLabel: {
+        position: 'absolute',
+        bottom: 160,
+        alignSelf: 'center',
+        backgroundColor: '#3b82f6',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#fff',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+    },
+    memberNameText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 });
