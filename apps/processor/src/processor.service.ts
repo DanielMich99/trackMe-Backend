@@ -154,6 +154,7 @@ export class ProcessorService {
       areaId: zone.id,
       areaName: zone.name,
       type: eventType as any,
+      createdAt: new Date(),
     });
     await this.alertRepository.save(alert);
 

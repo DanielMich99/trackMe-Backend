@@ -7,8 +7,10 @@ import {
     Platform,
     Modal,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Polyline, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import { Octicons, FontAwesome5 } from '@expo/vector-icons';
@@ -179,6 +181,18 @@ export default function RoutesScreen({ onBack }: { onBack: () => void }) {
     const [showMemberPicker, setShowMemberPicker] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
+    const [myLocation, setMyLocation] = useState<Location.LocationObject | null>(null);
+
+    // Get user location on mount
+    useEffect(() => {
+        (async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === 'granted') {
+                const location = await Location.getCurrentPositionAsync({});
+                setMyLocation(location);
+            }
+        })();
+    }, []);
 
     // Convert time range to seconds for PlaybackControls
     const timeRangeStart = startTime
@@ -240,6 +254,18 @@ export default function RoutesScreen({ onBack }: { onBack: () => void }) {
         setCurrentPointIndex(closestIdx);
     };
 
+    // Show loading while waiting for location
+    if (!myLocation) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text style={styles.loadingText}>Locating your position...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -299,7 +325,7 @@ export default function RoutesScreen({ onBack }: { onBack: () => void }) {
             <MapView
                 ref={mapRef}
                 style={styles.map}
-                initialRegion={{ latitude: 32.0, longitude: 34.945, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
+                initialRegion={{ latitude: myLocation.coords.latitude, longitude: myLocation.coords.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
             >
                 {locations.length > 1 && (
                     <Polyline
@@ -497,5 +523,16 @@ const styles = StyleSheet.create({
         fontSize: 13,
         marginTop: 6,
         textAlign: 'center',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+    },
+    loadingText: {
+        color: '#94a3b8',
+        fontSize: 16,
+        marginTop: 16,
     },
 });

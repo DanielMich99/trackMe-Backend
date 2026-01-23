@@ -1,0 +1,69 @@
+# =============================================================================
+# Example Terraform Variables File
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your actual values.
+# NEVER commit terraform.tfvars with real secrets to version control!
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# General Configuration
+# -----------------------------------------------------------------------------
+
+aws_region   = "us-east-1"
+environment  = "prod"
+project_name = "track-me"
+
+# -----------------------------------------------------------------------------
+# VPC Configuration
+# -----------------------------------------------------------------------------
+
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# -----------------------------------------------------------------------------
+# RDS Configuration
+# -----------------------------------------------------------------------------
+
+db_instance_class    = "db.t3.micro"
+db_name              = "track_me_db"
+db_username          = "trackme_admin"
+db_password          = "REPLACE_WITH_STRONG_PASSWORD"
+db_allocated_storage = 20
+
+# -----------------------------------------------------------------------------
+# ECS Fargate Configuration (Processor)
+# -----------------------------------------------------------------------------
+
+processor_cpu           = 256   # 0.25 vCPU
+processor_memory        = 512   # 512 MB
+processor_desired_count = 1
+
+# -----------------------------------------------------------------------------
+# App Runner Configuration (API)
+# -----------------------------------------------------------------------------
+
+api_cpu    = 1024  # 1 vCPU
+api_memory = 2048  # 2 GB
+
+# -----------------------------------------------------------------------------
+# Confluent Cloud Kafka Credentials
+# Get these from Confluent Cloud Console -> Cluster -> API Keys
+# -----------------------------------------------------------------------------
+
+confluent_kafka_brokers    = "pkc-xxxxx.us-east-1.aws.confluent.cloud:9092"
+confluent_kafka_api_key    = "REPLACE_WITH_CONFLUENT_API_KEY"
+confluent_kafka_api_secret = "REPLACE_WITH_CONFLUENT_API_SECRET"
+
+# -----------------------------------------------------------------------------
+# Upstash Redis Credentials (from Upstash Console)
+# -----------------------------------------------------------------------------
+
+upstash_redis_url      = "REPLACE_WITH_UPSTASH_REDIS_URL"
+upstash_redis_password = "REPLACE_WITH_UPSTASH_REDIS_PASSWORD"
+
+# -----------------------------------------------------------------------------
+# Google OAuth (from Google Cloud Console)
+# -----------------------------------------------------------------------------
+
+google_client_id = "REPLACE_WITH_GOOGLE_CLIENT_ID"
