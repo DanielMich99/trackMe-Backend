@@ -7,6 +7,8 @@ import Redis from 'ioredis';
 
 import { LocationModule } from '../location/location.module';
 
+import { ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [TypeOrmModule.forFeature([Group, User, GroupMember, Location]), LocationModule],
   controllers: [GroupsController],
@@ -14,7 +16,14 @@ import { LocationModule } from '../location/location.module';
     GroupsService,
     {
       provide: 'REDIS_CLIENT',
-      useFactory: () => new Redis({ host: 'localhost', port: 6379 }),
+      useFactory: (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return new Redis(redisUrl);
+        }
+        return new Redis({ host: 'localhost', port: 6379 });
+      },
+      inject: [ConfigService],
     },
   ],
 })

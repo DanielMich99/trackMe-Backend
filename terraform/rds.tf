@@ -1,11 +1,37 @@
 # =============================================================================
-# RDS PostgreSQL Configuration
+# RDS PostgreSQL Configuration - COST OPTIMIZED
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# DB Subnet Group (uses private subnets)
+# RDS Security Group
+# Defines firewall rules specifically for the database
 # -----------------------------------------------------------------------------
+resource "aws_security_group" "rds" {
+  name        = "${var.project_name}-${var.environment}-rds-sg"
+  description = "Security group for RDS PostgreSQL"
+  vpc_id      = aws_vpc.main.id
 
+  # Inbound Rule: Allow PostgreSQL traffic (port 5432) ONLY from our ECS services
+  ingress {
+    description     = "PostgreSQL from ECS services"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.ecs.id,     # Access from Processor
+      aws_security_group.ecs_api.id  # Access from API
+    ]
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-rds-sg"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# DB Subnet Group
+# Places the DB in the isolated Private Subnets
+# -----------------------------------------------------------------------------
 resource "aws_db_subnet_group" "main" {
   name        = "${var.project_name}-${var.environment}-db-subnet-group"
   description = "Database subnet group for Track-Me"
@@ -17,16 +43,13 @@ resource "aws_db_subnet_group" "main" {
 }
 
 # -----------------------------------------------------------------------------
-# RDS Parameter Group with PostGIS Configuration
+# DB Parameter Group
+# Configures PostgreSQL 15 specific settings
 # -----------------------------------------------------------------------------
-
 resource "aws_db_parameter_group" "postgres" {
   name        = "${var.project_name}-${var.environment}-pg15-params"
   family      = "postgres15"
-  description = "Parameter group for PostgreSQL 15 with PostGIS"
-
-  # PostGIS and other extensions are enabled via shared_preload_libraries or SQL
-  # The actual extension must be created in the database after provisioning
+  description = "Parameter group for PostgreSQL 15 with PostGIS support"
 
   tags = {
     Name = "${var.project_name}-${var.environment}-pg15-params"
@@ -34,58 +57,47 @@ resource "aws_db_parameter_group" "postgres" {
 }
 
 # -----------------------------------------------------------------------------
-# RDS PostgreSQL Instance
+# RDS Instance
+# Configured for Free Tier eligibility where possible
 # -----------------------------------------------------------------------------
-
 resource "aws_db_instance" "main" {
   identifier = "${var.project_name}-${var.environment}-postgres"
 
-  # Engine configuration
-  engine               = "postgres"
-  engine_version       = "15"
-  instance_class       = var.db_instance_class
-  allocated_storage    = var.db_allocated_storage
-  max_allocated_storage = 100 # Enable autoscaling up to 100 GB
+  # Hardware & Engine
+  engine         = "postgres"
+  engine_version = "15"
+  instance_class = var.db_instance_class # defined in variables.tf (use db.t3.micro or t4g.micro)
+  
+  # Storage (Free Tier gives up to 20GB)
+  allocated_storage     = 20
+  max_allocated_storage = 100 # Allow auto-scaling if needed
+  storage_type          = "gp3"
+  storage_encrypted     = true
 
-  # Database configuration
+  # Credentials
   db_name  = var.db_name
   username = var.db_username
   password = var.db_password
 
-  # Network configuration
+  # Networking & Security
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
-  publicly_accessible    = false
+  parameter_group_name   = aws_db_parameter_group.postgres.name
+  publicly_accessible    = false # IMPORTANT: Keep DB private for security
+  multi_az               = false # IMPORTANT: False to save cost (Single AZ)
 
-  # Storage configuration
-  storage_type      = "gp3"
-  storage_encrypted = true
-
-  # Backup configuration
-  backup_retention_period = 1  # Reduced for free tier compatibility
+  # Backups & Maintenance
+  backup_retention_period = 1             # Keep only 1 day of backups to save cost
   backup_window           = "03:00-04:00"
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
-  # Performance and monitoring
-  parameter_group_name          = aws_db_parameter_group.postgres.name
-  performance_insights_enabled  = false # Disabled for db.t3.micro to save cost
-  enabled_cloudwatch_logs_exports = ["postgresql"]
-
-  # High availability (disabled for cost savings)
-  multi_az = false
-
-  # Deletion protection (enable in production)
-  deletion_protection = false
-  skip_final_snapshot = true
+  # Cost Optimization & Cleanup settings
+  performance_insights_enabled = false    # Disable to save cost
+  deletion_protection          = false    # Allow easy destroy for learning project
+  skip_final_snapshot          = true     # Don't create snapshot on destroy
+  final_snapshot_identifier    = null
 
   tags = {
     Name = "${var.project_name}-${var.environment}-postgres"
   }
 }
-
-# -----------------------------------------------------------------------------
-# Note: PostGIS Extension
-# After the RDS instance is created, connect and run:
-#   CREATE EXTENSION IF NOT EXISTS postgis;
-#   CREATE EXTENSION IF NOT EXISTS postgis_topology;
-# -----------------------------------------------------------------------------

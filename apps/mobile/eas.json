@@ -9,7 +9,14 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "916899882552-tvo7v69u8fk38a4l0qhsjsrov18h1s81.apps.googleusercontent.com",
+        "EXPO_PUBLIC_API_URL": "http://track-me-prod-api-alb-579552396.us-east-1.elb.amazonaws.com"
+      }
     },
     "production": {
       "autoIncrement": true

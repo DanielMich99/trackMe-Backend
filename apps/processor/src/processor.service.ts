@@ -61,15 +61,18 @@ export class ProcessorService {
     };
 
     // Find ALL danger zones that contain this point (for any alertOn type)
+    this.logger.debug(`[Geofence] Checking user ${data.userId} at ${data.latitude}, ${data.longitude} | Groups: ${groupIds.length}`);
     const currentZones = await this.areaRepository
       .createQueryBuilder('area')
-      .where(`ST_Contains(area.polygon, ST_GeomFromGeoJSON(:point))`, {
+      .where(`ST_Contains(area.polygon, ST_SetSRID(ST_GeomFromGeoJSON(:point), 4326))`, {
         point: JSON.stringify(point),
       })
       .andWhere('area.groupId IN (:...groupIds)', { groupIds })
       .andWhere('(area.targetUserId IS NULL OR area.targetUserId = :userId)', { userId: data.userId })
       .andWhere("area.type IN (:...types)", { types: ['DANGER', 'SAFE'] })
       .getMany();
+
+    this.logger.debug(`[Geofence] Query found ${currentZones.length} zones. IDs: ${currentZones.map(z => z.id).join(', ')}`);
 
     const currentZoneIds = new Set(currentZones.map(z => z.id));
 
@@ -83,6 +86,10 @@ export class ProcessorService {
 
     // Find LEFT zones (in previous but not in current)
     const leftZoneIds = previousZoneIds.filter(id => !currentZoneIds.has(id));
+
+    if (enteredZoneIds.length > 0 || leftZoneIds.length > 0) {
+      this.logger.debug(`[Geofence] Previous: ${previousZoneIds.join(', ')} | Entered: ${enteredZoneIds.join(', ')} | Left: ${leftZoneIds.join(', ')}`);
+    }
 
     // Get user name once for all alerts
     let userName = '';

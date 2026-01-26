@@ -1,5 +1,5 @@
 # =============================================================================
-# Input Variables for Track-Me Infrastructure
+# Input Variables - COST OPTIMIZED DEFAULTS
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -48,7 +48,7 @@ variable "public_subnet_cidrs" {
 variable "private_subnet_cidrs" {
   description = "CIDR blocks for private subnets"
   type        = list(string)
-  default     = ["10.0.10.0/24", "10.0.20.0/24"]
+  default     = ["10.0.3.0/24", "10.0.4.0/24"]
 }
 
 # -----------------------------------------------------------------------------
@@ -56,38 +56,32 @@ variable "private_subnet_cidrs" {
 # -----------------------------------------------------------------------------
 
 variable "db_instance_class" {
-  description = "RDS instance type"
+  description = "RDS instance type (db.t3.micro is usually Free Tier eligible)"
   type        = string
-  default     = "db.t3.micro"
+  default     = "db.t3.micro" 
 }
 
 variable "db_name" {
   description = "Database name"
   type        = string
-  default     = "track_me_db"
+  default     = "trackme"
 }
 
 variable "db_username" {
-  description = "Database master username"
+  description = "Database username"
   type        = string
   default     = "trackme_admin"
-  sensitive   = true
 }
 
 variable "db_password" {
-  description = "Database master password"
+  description = "Database password"
   type        = string
   sensitive   = true
-}
-
-variable "db_allocated_storage" {
-  description = "Allocated storage for RDS in GB"
-  type        = number
-  default     = 20
+  # No default value for security - must be provided via terraform.tfvars or env vars
 }
 
 # -----------------------------------------------------------------------------
-# ECS Fargate Configuration (Processor)
+# ECS Task Configuration (Minimum Resources for Cost Saving)
 # -----------------------------------------------------------------------------
 
 variable "processor_cpu" {
@@ -97,7 +91,7 @@ variable "processor_cpu" {
 }
 
 variable "processor_memory" {
-  description = "Memory for processor task in MB"
+  description = "Memory (MiB) for processor task"
   type        = number
   default     = 512
 }
@@ -105,12 +99,8 @@ variable "processor_memory" {
 variable "processor_desired_count" {
   description = "Number of processor tasks to run"
   type        = number
-  default     = 1
+  default     = 1 # Keep at 1 for learning project
 }
-
-# -----------------------------------------------------------------------------
-# ECS API Configuration
-# -----------------------------------------------------------------------------
 
 variable "api_cpu" {
   description = "CPU units for API task (256 = 0.25 vCPU)"
@@ -119,7 +109,7 @@ variable "api_cpu" {
 }
 
 variable "api_memory" {
-  description = "Memory for API task in MB"
+  description = "Memory (MiB) for API task"
   type        = number
   default     = 512
 }
@@ -127,7 +117,7 @@ variable "api_memory" {
 variable "api_desired_count" {
   description = "Number of API tasks to run"
   type        = number
-  default     = 1
+  default     = 1 # Keep at 1 for learning project
 }
 
 # -----------------------------------------------------------------------------
