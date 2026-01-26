@@ -17,7 +17,7 @@ import { Alert } from './entities/alert.entity';
       password: process.env.DB_PASSWORD || 'mypassword',
       database: process.env.DB_NAME || 'track_me_db',
       entities: [User, Location, Area, Group, GroupMember, Alert],
-      synchronize: true, // TODO: set to false in production
+      synchronize: process.env.NODE_ENV !== 'production', // Safe for production
       ssl: process.env.DB_HOST !== 'localhost' ? {
         rejectUnauthorized: false
       } : false,

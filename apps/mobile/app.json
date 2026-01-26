@@ -29,7 +29,12 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_LOCATION"
+        "FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -49,11 +54,20 @@
           "locationAlwaysAndWhenInUsePermission": "Allow TrackMe to use your location to share with your group members using the app.",
           "isAndroidBackgroundLocationEnabled": true
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "networkSecurityConfigPath": "./network_security_config.xml"
+          }
+        }
       ]
     ],
     "extra": {
       "eas": {
-        "projectId": "36edb2a7-75a7-463f-b7d0-50cb20318a57"
+        "projectId": "fe9a1502-c8b5-4b39-80d6-2e0280a10255"
       }
     }
   }

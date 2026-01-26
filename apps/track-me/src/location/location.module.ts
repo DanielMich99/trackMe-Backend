@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices'; // Added for Kafka
 import { LocationService } from './location.service';
 import { LocationController } from './location.controller';
@@ -12,18 +13,31 @@ import Redis from 'ioredis';
   imports: [
     TypeOrmModule.forFeature([Location, User, Area, GroupMember]),
     // Kafka client configuration
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
-        name: 'KAFKA_SERVICE', // Service name for dependency injection
-        transport: Transport.KAFKA,
-        options: {
-          client: {
-            brokers: ['localhost:9092'], // Kafka broker address in Docker
-          },
-          consumer: {
-            groupId: 'track-me-producer', // Unique consumer group ID
-          },
+        name: 'KAFKA_SERVICE',
+        useFactory: (configService: ConfigService) => {
+          const kafkaApiKey = configService.get<string>('KAFKA_API_KEY');
+          const kafkaApiSecret = configService.get<string>('KAFKA_API_SECRET');
+          return {
+            transport: Transport.KAFKA,
+            options: {
+              client: {
+                brokers: [configService.get<string>('KAFKA_BROKERS') || 'localhost:9092'],
+                sasl: kafkaApiKey && kafkaApiSecret ? {
+                  mechanism: 'plain',
+                  username: kafkaApiKey,
+                  password: kafkaApiSecret,
+                } : undefined,
+                ssl: !!kafkaApiKey,
+              },
+              consumer: {
+                groupId: 'track-me-producer',
+              },
+            },
+          };
         },
+        inject: [ConfigService],
       },
     ]),
   ],
@@ -34,9 +48,14 @@ import Redis from 'ioredis';
     // --- Added Redis back (for the Gateway) ---
     {
       provide: 'REDIS_SUB', // Special name for subscriber
-      useFactory: () => {
+      useFactory: (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return new Redis(redisUrl);
+        }
         return new Redis({ host: 'localhost', port: 6379 });
       },
+      inject: [ConfigService],
     },
   ],
   exports: [LocationGateway, LocationService],

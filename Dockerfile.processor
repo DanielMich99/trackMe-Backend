@@ -1,0 +1,48 @@
+# =============================================================================
+# Track-Me Processor Dockerfile
+# =============================================================================
+# Multi-stage build for NestJS Processor Microservice (ECS Fargate deployment)
+# =============================================================================
+
+# --- Stage 1: Build ---
+FROM node:22-alpine AS builder
+
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
+
+# Copy source files
+COPY . .
+
+# Build the processor application
+RUN npm run build -- processor
+
+# --- Stage 2: Production ---
+FROM node:22-alpine
+
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built application from builder stage
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Run as non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+USER nodejs
+
+# Processor doesn't necessarily expose a port if it's just a consumer, 
+# but if it has health checks or metrics, expose them.
+# For now, we assume it's a background worker.
+
+# Start the Processor
+CMD ["node", "dist/apps/processor/main"]
