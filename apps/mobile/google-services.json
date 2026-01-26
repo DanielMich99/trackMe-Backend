@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "916899882552",
+    "project_id": "trackme-483708",
+    "storage_bucket": "trackme-483708.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:916899882552:android:7ebebb4fcf88cb283928cd",
+        "android_client_info": {
+          "package_name": "com.trackmeapp10.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "916899882552-7anjh1qd45v0apmgsrorseucsm0uj1vu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trackmeapp10.mobile",
+            "certificate_hash": "d39a0c2e219909699a779e9c6176b279e9efaecd"
+          }
+        },
+        {
+          "client_id": "916899882552-tvo7v69u8fk38a4l0qhsjsrov18h1s81.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBP8P7QzqQlz4HtHr9hfHP6NdaHe3Je9kc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "916899882552-tvo7v69u8fk38a4l0qhsjsrov18h1s81.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

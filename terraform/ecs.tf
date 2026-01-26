@@ -1,11 +1,10 @@
 # =============================================================================
-# ECS Fargate Configuration (Processor Microservice)
+# ECS Fargate Configuration (Processor & API) - COST OPTIMIZED
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # ECS Cluster
 # -----------------------------------------------------------------------------
-
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-${var.environment}-cluster"
 
@@ -22,7 +21,6 @@ resource "aws_ecs_cluster" "main" {
 # -----------------------------------------------------------------------------
 # ECS Task Execution Role (for pulling images and writing logs)
 # -----------------------------------------------------------------------------
-
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.project_name}-${var.environment}-ecs-execution-role"
 
@@ -76,7 +74,6 @@ resource "aws_iam_role_policy" "ecs_secrets_policy" {
 # -----------------------------------------------------------------------------
 # ECS Task Role (for application permissions)
 # -----------------------------------------------------------------------------
-
 resource "aws_iam_role" "ecs_task" {
   name = "${var.project_name}-${var.environment}-ecs-task-role"
 
@@ -101,7 +98,6 @@ resource "aws_iam_role" "ecs_task" {
 # -----------------------------------------------------------------------------
 # ECS Task Definition for Processor
 # -----------------------------------------------------------------------------
-
 resource "aws_ecs_task_definition" "processor" {
   family                   = "${var.project_name}-processor"
   network_mode             = "awsvpc"
@@ -185,23 +181,27 @@ resource "aws_ecs_task_definition" "processor" {
 }
 
 # -----------------------------------------------------------------------------
-# ECS Service for Processor
+# ECS Service for Processor (Using Spot & Public Subnets)
 # -----------------------------------------------------------------------------
-
 resource "aws_ecs_service" "processor" {
   name            = "${var.project_name}-processor-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.processor.arn
   desired_count   = var.processor_desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
+  
+  # שינוי ל-Spot לחיסכון בעלויות
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
   }
 
-  # Allow external deployment without Terraform
+  network_configuration {
+    # שינוי לסאבנט ציבורי + IP ציבורי (במקום NAT Gateway)
+    subnets          = aws_subnet.public[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = true
+  }
+
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
@@ -218,7 +218,6 @@ resource "aws_ecs_service" "processor" {
 # -----------------------------------------------------------------------------
 # ECS Task Definition for API
 # -----------------------------------------------------------------------------
-
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.project_name}-api"
   network_mode             = "awsvpc"
@@ -318,20 +317,25 @@ resource "aws_ecs_task_definition" "api" {
 }
 
 # -----------------------------------------------------------------------------
-# ECS Service for API (behind ALB)
+# ECS Service for API (Using Spot & Public Subnets)
 # -----------------------------------------------------------------------------
-
 resource "aws_ecs_service" "api" {
   name            = "${var.project_name}-api-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = var.api_desired_count
-  launch_type     = "FARGATE"
+  
+  # שינוי ל-Spot לחיסכון בעלויות
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    # שינוי לסאבנט ציבורי + IP ציבורי
+    subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_api.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -340,10 +344,8 @@ resource "aws_ecs_service" "api" {
     container_port   = 3000
   }
 
-  # Ensure ALB target group is created first
   depends_on = [aws_lb_listener.api_http]
 
-  # Allow external deployment without Terraform
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }

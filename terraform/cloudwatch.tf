@@ -1,14 +1,16 @@
 # =============================================================================
-# CloudWatch Configuration
+# CloudWatch Configuration - COST OPTIMIZED
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # Log Groups
+# Retention lowered to 3 days to save storage costs
 # -----------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "api" {
-  name              = "/aws/apprunner/${var.project_name}-${var.environment}-api"
-  retention_in_days = 30
+  # שינוי השם ל-ecs במקום apprunner להתאמה לארכיטקטורה החדשה
+  name              = "/ecs/${var.project_name}-${var.environment}-api"
+  retention_in_days = 3 # שומר לוגים רק ל-3 ימים
 
   tags = {
     Name = "${var.project_name}-api-logs"
@@ -17,7 +19,7 @@ resource "aws_cloudwatch_log_group" "api" {
 
 resource "aws_cloudwatch_log_group" "processor" {
   name              = "/ecs/${var.project_name}-${var.environment}-processor"
-  retention_in_days = 30
+  retention_in_days = 3
 
   tags = {
     Name = "${var.project_name}-processor-logs"
@@ -26,7 +28,7 @@ resource "aws_cloudwatch_log_group" "processor" {
 
 resource "aws_cloudwatch_log_group" "rds" {
   name              = "/aws/rds/instance/${var.project_name}-${var.environment}-postgres/postgresql"
-  retention_in_days = 14
+  retention_in_days = 3
 
   tags = {
     Name = "${var.project_name}-rds-logs"
@@ -34,12 +36,13 @@ resource "aws_cloudwatch_log_group" "rds" {
 }
 
 # -----------------------------------------------------------------------------
-# CloudWatch Alarms (Optional - Uncomment as needed)
+# CloudWatch Alarms
+# Keeps track of health but minimal cost (~$0.10/alarm/month)
 # -----------------------------------------------------------------------------
 
 # RDS CPU Utilization Alarm
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
-  alarm_name          = "${var.project_name}-${var.environment}-rds-high-cpu"
+  alarm_name          = "${var.project_name}-${var.environment}-rds-cpu-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -47,7 +50,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   period              = 300
   statistic           = "Average"
   threshold           = 80
-  alarm_description   = "This alarm triggers when RDS CPU exceeds 80%"
+  alarm_description   = "This alarm triggers when RDS CPU > 80%"
 
   dimensions = {
     DBInstanceIdentifier = aws_db_instance.main.identifier
@@ -89,7 +92,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_running_tasks" {
   period              = 300
   statistic           = "Average"
   threshold           = 1
-  alarm_description   = "This alarm triggers when no processor tasks are running"
+  alarm_description   = "This alarm triggers when processor running tasks count is 0"
 
   dimensions = {
     ClusterName = aws_ecs_cluster.main.name
@@ -97,6 +100,6 @@ resource "aws_cloudwatch_metric_alarm" "ecs_running_tasks" {
   }
 
   tags = {
-    Name = "${var.project_name}-ecs-tasks-alarm"
+    Name = "${var.project_name}-processor-tasks-alarm"
   }
 }
