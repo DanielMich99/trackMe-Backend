@@ -1,98 +1,136 @@
+# 📍 TrackMe - Real-Time Group Safety Network
+
+**TrackMe** is a location-based IoT platform designed to enable groups (families, travelers, etc.) to maintain real-time safety tracking. The system allows users to define geofenced areas on a map and provides immediate automatic alerts when group members enter or exit these zones.
+
+The system was engineered with a focus on **Scalability**, **Cloud Cost Optimization**, and **High-Performance** real-time data processing.
+
+---
+
+## 🎬 Demo Video
+
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <a href="https://www.youtube.com/watch?v=8XEfR_q4pmk" target="_blank">
+    <img src="https://img.youtube.com/vi/8XEfR_q4pmk/maxresdefault.jpg" alt="צפו במערכת TrackMe בפעולה" width="700"/>
+  </a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+---
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Key Features
 
-## Description
+* **Live Location Tracking:** Real-time visibility of group members on an interactive map.
+* **Smart Geofencing:** Users can define dynamic polygons (Safe Zones / Danger Zones) and receive Push Notifications upon entry/exit.
+* **Background Monitoring:** A resilient background module (Headless Task) that tracks location even when the app is closed to conserve battery and ensure safety.
+* **Event-Driven Architecture:** Asynchronous data processing pipeline designed to handle high concurrency and ensure fault tolerance.
+* **Cost-Effective Infrastructure:** Cloud infrastructure leveraging Spot Instances to minimize operational costs.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 🛠 Tech Stack
 
-```bash
-$ npm install
-```
+### 📱 Client (Mobile)
+* **Framework:** React Native (Expo/CLI) with **TypeScript** for type-safe cross-platform development.
+* **Maps:** `react-native-maps` for complex polygon rendering and smooth live marker updates.
+* **State & Networking:** `Axios` (w/ Interceptors) + `Context API`.
+* **Real-Time:** `socket.io-client` for bi-directional communication (WebSockets) replacing inefficient polling.
+* **Auth:** OAuth 2.0 via `react-native-google-signin`.
+* **Background Tasks:** Native modules (`expo-task-manager`) for persistent location tracking.
 
-## Compile and run the project
+### 🔌 Backend (Microservices)
+* **Framework:** NestJS (Monorepo structure).
+* **Architecture:** Event-Driven Microservices (API Gateway + Processing Unit).
+* **Message Broker:** **Apache Kafka** for decoupling services and buffering high-throughput location data.
+* **Database:** **PostgreSQL** with **PostGIS** extension for efficient spatial queries (`ST_Contains`).
+* **Caching & Buffering:** **Redis** utilized for Write-Behind caching and a Pub/Sub mechanism for live updates.
 
-```bash
-# development
-$ npm run start
+### ☁️ DevOps & Cloud (AWS)
+* **IaC:** **Terraform** - Full infrastructure definition as code.
+* **Compute:** AWS **ECS Fargate** running on **Spot Instances** (Cost Optimization strategy).
+* **Network:** Custom **VPC**, **Application Load Balancer (ALB)**, with strict Security Group segmentation.
+* **Security:** **AWS Secrets Manager** for credential rotation and secure storage; **RDS** isolated in Private Subnets.
+* **CI/CD:** GitHub Actions -> Amazon **ECR** -> ECS Rolling Update.
+* **Monitoring:** AWS **CloudWatch** for centralized logging and debugging.
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
-```
+## 🏗 System Architecture & Engineering Highlights
 
-## Run tests
+The system was designed to handle a specific challenge: A **Write-Heavy Workload** resulting from thousands of incoming GPS updates per second.
 
-```bash
-# unit tests
-$ npm run test
+### 1. Handling Throughput with Kafka & Redis
+To prevent database bottlenecks caused by raw disk I/O:
+1.  The **API Gateway** accepts the location payload and immediately produces an event to **Kafka**.
+2.  The **Processor Service** consumes messages at its own pace.
+3.  **Write-Behind Pattern:** Locations are buffered temporarily in a **Redis List** (In-Memory).
+4.  A background CRON job performs a **Bulk Insert** to PostgreSQL every few seconds.
+    > *Result: Reduced database I/O load by over 80%.*
 
-# e2e tests
-$ npm run test:e2e
+### 2. Spatial Analysis with PostGIS
+Instead of performing heavy geometric calculations in the Node.js application layer:
+We leverage **PostGIS** native capabilities. Queries such as "Is User X inside Polygon Y?" are executed directly at the database level using spatial indices (GIST), ensuring single-digit millisecond response times.
 
-# test coverage
-$ npm run test:cov
-```
+### 3. Cloud Cost Optimization
+As an MVP, economic efficiency was a priority:
+* **Spot Instances:** The ECS Cluster is configured to run on **Fargate Spot**, reducing compute costs by approx. 70%.
+* **Network Trade-off:** Instead of using an expensive NAT Gateway, the architecture utilizes Public Subnets with tightened **Security Groups**, allowing containers to access external services (Google Auth, etc.) securely without the added infrastructure cost.
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 💻 Getting Started (Local Development)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+The project includes a `docker-compose` file that spins up the entire development environment (DB, Broker, Cache) with a single command.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### Prerequisites
+* Node.js > 18
+* Docker & Docker Compose
+* React Native Environment setup
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Installation
 
-## Resources
+1.  **Clone the repository**
+    ```bash
+    git clone [https://github.com/your-username/trackme.git](https://github.com/your-username/trackme.git)
+    cd trackme
+    ```
 
-Check out a few resources that may come in handy when working with NestJS:
+2.  **Start Infrastructure (Kafka, Postgres, Redis)**
+    ```bash
+    docker-compose up -d
+    ```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+3.  **Install Dependencies (Monorepo)**
+    ```bash
+    npm install
+    ```
 
-## Support
+4.  **Run Services**
+    ```bash
+    # Terminal 1: API Gateway
+    npm run start:api
+    
+    # Terminal 2: Processor Service
+    npm run start:processor
+    
+    # Terminal 3: Mobile App
+    cd apps/mobile && npm start
+    ```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 📂 Project Structure
+trackme/  
+├── apps/  
+│ ├── mobile/ # React Native App  
+│ ├── api/ # NestJS API Gateway (Socket.io + HTTP)  
+│ └── processor/ # NestJS Background Worker (Kafka Consumer)  
+├── libs/ # Shared libraries (Database Entities, DTOs)  
+├── terraform/ # AWS Infrastructure code  
+└── docker-compose.yml # Local development environment
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 📞 Contact
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**Daniel Michaelshvili** - Software Developer
+
+[LinkedIn](https://www.linkedin.com/in/daniel-michaelshvili-68b188212/) | [Email](danielmich0824@gmail.com)
