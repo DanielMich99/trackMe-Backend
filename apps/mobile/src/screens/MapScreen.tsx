@@ -479,8 +479,8 @@ const styles = StyleSheet.create({
     },
     map: { flex: 1 },
     circleMarker: {
-        width: 40,
-        height: 40,
+        width: 35,
+        height: 35,
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
@@ -514,8 +514,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     markerContainer: {
-        width: 40,
-        height: 40,
+
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'transparent',
