@@ -8,11 +8,11 @@ The system was engineered with a focus on **Scalability**, **Cloud Cost Optimiza
 
 ## 🎬 Demo Video
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=8XEfR_q4pmk" target="_blank">
-    <img src="https://img.youtube.com/vi/8XEfR_q4pmk/maxresdefault.jpg" alt="צפו במערכת TrackMe בפעולה" width="700"/>
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=8XEfR_q4pmk">
+    <img src="https://img.youtube.com/vi/8XEfR_q4pmk/hqdefault.jpg" alt="Watch the video" width="600" />
   </a>
-</p>
+</div>
 
 ---
 
