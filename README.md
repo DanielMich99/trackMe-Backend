@@ -18,8 +18,8 @@ The system was engineered with a focus on **Scalability**, **Cloud Cost Optimiza
 
 ## 👀 Screens
 
-<img src="screenPhotos/register.jpg" alt="Register Screen" width="180" height="540"/> <img src="screenPhotos/map.jpg" alt="Map Screen" width="180" height="540"/> <img src="screenPhotos/zones.jpg" alt="Zones Screen" width="180" height="540"/> <img src="screenPhotos/routes.jpg" alt="Routes Screen" width="180" height="540"/>
-<img src="screenPhotos/alerts.jpg" alt="Alerts Screen" width="180" height="540"/> <img src="screenPhotos/admin.jpg" alt="Admin Screen" width="180" height="540"/>
+<img src="screenPhotos/register.jpeg" alt="Register Screen" width="180" height="540"/> <img src="screenPhotos/map.jpeg" alt="Map Screen" width="180" height="540"/> <img src="screenPhotos/zones.jpeg" alt="Zones Screen" width="180" height="540"/> <img src="screenPhotos/routes.jpeg" alt="Routes Screen" width="180" height="540"/>
+<img src="screenPhotos/alerts.jpeg" alt="Alerts Screen" width="180" height="540"/> <img src="screenPhotos/admin.jpeg" alt="Admin Screen" width="180" height="540"/>
 ## 🚀 Key Features
 
 * **Live Location Tracking:** Real-time visibility of group members on an interactive map.
