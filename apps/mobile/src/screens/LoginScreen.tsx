@@ -127,10 +127,6 @@ export default function LoginScreen({ onSwitchToRegister }: Props) {
             <TouchableOpacity onPress={onSwitchToRegister}>
                 <Text style={styles.link}>Don't have an account? Register</Text>
             </TouchableOpacity>
-
-            <Text style={{ color: 'yellow', textAlign: 'center', marginTop: 20, fontSize: 10 }}>
-                Server: {process.env.EXPO_PUBLIC_API_URL}
-            </Text>
         </View>
     );
 }
