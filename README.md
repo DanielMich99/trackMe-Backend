@@ -9,8 +9,8 @@ The system was engineered with a focus on **Scalability**, **Cloud Cost Optimiza
 ## 🎬 Demo Video
 
 <div align="center">
-  <a href="https://www.youtube.com/watch?v=8XEfR_q4pmk">
-    <img src="https://img.youtube.com/vi/8XEfR_q4pmk/hqdefault.jpg" alt="Watch the video" width="600" />
+  <a href="https://www.youtube.com/watch?v=_zm1W0CrWAg">
+    <img src="https://img.youtube.com/vi/_zm1W0CrWAg/hqdefault.jpg" alt="Watch the video" width="600" />
   </a>
 </div>
 
